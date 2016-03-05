@@ -1,0 +1,11 @@
+body {
+  background-color: #444;
+  color: #eee;
+  padding-top: 50px;
+}
+
+.tile {
+  background-color: #777;
+  height: 400px;
+  margin-top: 30px;
+}
