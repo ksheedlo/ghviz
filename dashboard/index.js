@@ -18,6 +18,7 @@ const LINE_CHART_MARGIN = {
 };
 
 const d3 = require('d3'),
+  forEach = require('lodash.foreach'),
   map = require('lodash.map'),
   $ = require('jquery');
 
@@ -231,10 +232,12 @@ function drawIssues({ chartLineColor,
       .attr("stroke-dashoffset", 0);
 }
 
-fetch(`/gh/${owner}/${repo}/issue_counts`).then((response) => {
+const issueCountsPromise = fetch(`/gh/${owner}/${repo}/issue_counts`).then(
+  (response) => {
   return response.json();
-})
-.then((issueCounts) => {
+});
+
+issueCountsPromise.then((issueCounts) => {
   const formattedCounts = map(issueCounts, (issueCount) => {
     return { openIssues: issueCount.OpenIssues,
              openPrs: issueCount.OpenPrs,
@@ -260,3 +263,36 @@ fetch(`/gh/${owner}/${repo}/issue_counts`).then((response) => {
   });
 });
 
+Promise.all([
+  issueCountsPromise,
+
+  fetch(`/gh/${owner}/${repo}/top_issues`).then((response) => {
+    return response.json();
+  })
+]).then(([issueCounts, topIssues]) => {
+  const topIssuesElt = document
+    .querySelector('.template__top-issues')
+    .cloneNode(true);
+
+  const issueRowElt = document.querySelector('.template__issue');
+
+  topIssuesElt.className = '';
+  topIssuesElt
+    .querySelector('.top-issues__header-text')
+    .appendChild(document.createTextNode(
+      `${issueCounts[issueCounts.length-1].OpenIssues} Open Issues`));
+
+  forEach(topIssues, (topIssue) => {
+    const issueRow = issueRowElt.cloneNode(true);
+    issueRow.className = 'top-issues__issue';
+    issueRow.setAttribute('href', topIssue.html_url);
+    issueRow
+      .querySelector('.top-issues__issue-title')
+      .appendChild(document.createTextNode(topIssue.title));
+    topIssuesElt.querySelector('.top-issues__list').appendChild(issueRow);
+  });
+
+  const topIssuesTile = document.querySelector('.tile__top-issues');
+  topIssuesTile.removeChild(topIssuesTile.querySelector('.loader__wrapper'));
+  topIssuesTile.appendChild(topIssuesElt);
+});

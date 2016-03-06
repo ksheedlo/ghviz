@@ -57,6 +57,54 @@ body {
   padding-top: 100px;
 }
 
+.top-issues__header {
+  font-size: 56px;
+  padding-top: 20px;
+}
+
+.top-issues__header-icon {
+  font-size: 64px;
+}
+
+.top-issues__icon {
+  font-size: 32px;
+}
+
+.top-issues__issue {
+  border-bottom: 1px solid #444;
+  color: #eee;
+  cursor: pointer;
+  display: block;
+  font-size: 24px;
+  height: 48px;
+  overflow: hidden;
+  padding: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top-issues__issue:hover {
+  background-color: #999;
+}
+
+.top-issues__issue:hover,
+.top-issues__issue:focus {
+  color: #eee;
+  text-decoration: none;
+}
+
+.top-issues__issue:last-child {
+  border-bottom: none;
+}
+
+.top-issues__issue-title {
+  font-size: 24px;
+}
+
+.top-issues__list {
+  padding: 0 10px 10px 10px;
+}
+
 .template {
   display: none;
 }
