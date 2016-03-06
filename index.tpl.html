@@ -9,25 +9,43 @@
     <nav class="navbar navbar-inverse navbar-fixed-top">
       <div class="container-fluid">
         <div class="navbar-header">
-          <a class="navbar-brand" href="/">Github Tracker</a>
+          <a class="navbar-brand" href="https://github.com/{{.Owner}}/{{.Repo}}" target="_blank">
+            {{.Owner}}/{{.Repo}}
+          </a>
         </div>
       </div>
     </nav>
     <div class="container-fluid">
       <div class="row">
         <div class="col-sm-4">
-          <div class="tile tile__star-headline"></div>
+          <div class="tile tile__star-headline">
+            <div class="loader__wrapper">
+              <div class="loader"></div>
+            </div>
+          </div>
         </div>
         <div class="col-sm-4">
-          <div class="tile tile__issue-count"></div>
+          <div class="tile tile__issue-count">
+            <div class="loader__wrapper">
+              <div class="loader"></div>
+            </div>
+          </div>
         </div>
         <div class="col-sm-4">
-          <div class="tile tile__pr-count"></div>
+          <div class="tile tile__pr-count">
+            <div class="loader__wrapper">
+              <div class="loader"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="row">
         <div class="col-sm-4">
-          <div class="tile tile__star-count"></div>
+          <div class="tile tile__star-count">
+            <div class="loader__wrapper">
+              <div class="loader"></div>
+            </div>
+          </div>
         </div>
         <div class="col-sm-4">
           <div class="tile"></div>
@@ -42,7 +60,14 @@
         <span class="star-headline__count"></span>
         <span class="glyphicon glyphicon-star-empty"></span>
       </p>
+      <p class="star-headline__caption text-center"></p>
     </div>
-    <script src="/dashboard/bundle.min.js"></script>
+    <script type="text/javascript">
+      window.GLOBALS = {
+        owner: "{{.Owner}}",
+        repo: "{{.Repo}}"
+      };
+    </script>
+    <script type="text/javascript" src="/dashboard/bundle.min.js"></script>
   </body>
 </html>

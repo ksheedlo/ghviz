@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"sort"
+	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -50,21 +51,27 @@ const (
 	IssueClosed
 )
 
-type IssueEvent struct {
+type IssueAndPrEvent struct {
 	EventType IssueEventType
+	IsPr      bool
 	Timestamp time.Time
 }
 
-type ByTimestamp []IssueEvent
+type ByIprTimestamp []IssueAndPrEvent
 
-func (a ByTimestamp) Len() int           { return len(a) }
-func (a ByTimestamp) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByTimestamp) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
+func (a ByIprTimestamp) Len() int           { return len(a) }
+func (a ByIprTimestamp) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByIprTimestamp) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
 
-type OpenIssueCount struct {
+type OpenIssueAndPrCount struct {
 	OpenIssues int
+	OpenPrs    int
 	Timestamp  time.Time
-	UnixTime   int64
+}
+
+type IndexParams struct {
+	Owner string
+	Repo  string
 }
 
 func DecodeStarEvents(apiObjects []map[string]interface{}) ([]StarEvent, error) {
@@ -90,72 +97,51 @@ func ComputeStarCounts(starEvents []StarEvent) []StarCount {
 	return starCounts
 }
 
-func DecodeIssueEvents(apiObjects []map[string]interface{}) ([]IssueEvent, error) {
-	var issueEvents []IssueEvent
+func DecodeIssueAndPrEvents(apiObjects []map[string]interface{}) ([]IssueAndPrEvent, error) {
+	var issueEvents []IssueAndPrEvent
 	for i := 0; i < len(apiObjects); i++ {
-		if _, isPullRequest := apiObjects[i]["pull_request"]; !isPullRequest {
-			issueOpened := IssueEvent{EventType: IssueOpened}
-			createdAt, err := time.Parse(time.RFC3339, apiObjects[i]["created_at"].(string))
+		issueOpened := IssueAndPrEvent{EventType: IssueOpened}
+		_, issueOpened.IsPr = apiObjects[i]["pull_request"]
+		createdAt, err := time.Parse(time.RFC3339, apiObjects[i]["created_at"].(string))
+		if err != nil {
+			return nil, err
+		}
+		issueOpened.Timestamp = createdAt
+		issueEvents = append(issueEvents, issueOpened)
+
+		if closedAt := apiObjects[i]["closed_at"]; closedAt != nil {
+			issueClosed := IssueAndPrEvent{EventType: IssueClosed}
+			issueClosed.IsPr = issueOpened.IsPr
+			closedAt, err := time.Parse(time.RFC3339, closedAt.(string))
 			if err != nil {
 				return nil, err
 			}
-			issueOpened.Timestamp = createdAt
-			issueEvents = append(issueEvents, issueOpened)
-
-			if closedAt := apiObjects[i]["closed_at"]; closedAt != nil {
-				issueClosed := IssueEvent{EventType: IssueClosed}
-				closedAt, err := time.Parse(time.RFC3339, closedAt.(string))
-				if err != nil {
-					return nil, err
-				}
-				issueClosed.Timestamp = closedAt
-				issueEvents = append(issueEvents, issueClosed)
-			}
+			issueClosed.Timestamp = closedAt
+			issueEvents = append(issueEvents, issueClosed)
 		}
 	}
-	sort.Sort(ByTimestamp(issueEvents))
+	sort.Sort(ByIprTimestamp(issueEvents))
 	return issueEvents, nil
 }
 
-func DecodePrEvents(apiObjects []map[string]interface{}) ([]IssueEvent, error) {
-	var issueEvents []IssueEvent
-	for i := 0; i < len(apiObjects); i++ {
-		if _, isPullRequest := apiObjects[i]["pull_request"]; isPullRequest {
-			issueOpened := IssueEvent{EventType: IssueOpened}
-			createdAt, err := time.Parse(time.RFC3339, apiObjects[i]["created_at"].(string))
-			if err != nil {
-				return nil, err
-			}
-			issueOpened.Timestamp = createdAt
-			issueEvents = append(issueEvents, issueOpened)
-
-			if closedAt := apiObjects[i]["closed_at"]; closedAt != nil {
-				issueClosed := IssueEvent{EventType: IssueClosed}
-				closedAt, err := time.Parse(time.RFC3339, closedAt.(string))
-				if err != nil {
-					return nil, err
-				}
-				issueClosed.Timestamp = closedAt
-				issueEvents = append(issueEvents, issueClosed)
-			}
-		}
-	}
-	sort.Sort(ByTimestamp(issueEvents))
-	return issueEvents, nil
-}
-
-func ComputeOpenIssueCounts(issueEvents []IssueEvent) []OpenIssueCount {
-	issueCounts := make([]OpenIssueCount, len(issueEvents))
+func ComputeOpenIssueAndPrCounts(issueEvents []IssueAndPrEvent) []OpenIssueAndPrCount {
+	issueCounts := make([]OpenIssueAndPrCount, len(issueEvents))
 	openIssues := 0
+	openPrs := 0
 	for i := 0; i < len(issueEvents); i++ {
-		if issueEvents[i].EventType == IssueOpened {
+		switch {
+		case issueEvents[i].EventType == IssueOpened && issueEvents[i].IsPr:
+			openPrs++
+		case issueEvents[i].EventType == IssueClosed && issueEvents[i].IsPr:
+			openPrs--
+		case issueEvents[i].EventType == IssueOpened && (!issueEvents[i].IsPr):
 			openIssues++
-		} else {
+		default:
 			openIssues--
 		}
 		issueCounts[i].OpenIssues = openIssues
+		issueCounts[i].OpenPrs = openPrs
 		issueCounts[i].Timestamp = issueEvents[i].Timestamp
-		issueCounts[i].UnixTime = issueEvents[i].Timestamp.Unix()
 	}
 	return issueCounts
 }
@@ -201,65 +187,6 @@ func PaginateGithub(path, mediaType string) ([]map[string]interface{}, *HttpErro
 	return allItems, nil
 }
 
-func PaginateStargazers(owner, repo string) ([]byte, *HttpError) {
-	allItems, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/stargazers?per_page=100", owner, repo),
-		"application/vnd.github.v3.star+json",
-	)
-	if err != nil {
-		return nil, err
-	}
-	jsonBlob, jsonErr := json.Marshal(allItems)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
-		return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-	}
-	return jsonBlob, nil
-}
-
-func PaginateEvents(owner, repo string) ([]byte, *HttpError) {
-	allItems, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/events?per_page=100", owner, repo),
-		"application/vnd.github.v3+json",
-	)
-	if err != nil {
-		return nil, err
-	}
-	jsonBlob, jsonErr := json.Marshal(allItems)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
-		return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-	}
-	return jsonBlob, nil
-}
-
-func PaginateIssues(owner, repo string) ([]byte, *HttpError) {
-	allItems, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
-		"application/vnd.github.v3+json",
-	)
-	if err != nil {
-		return nil, err
-	}
-	jsonBlob, jsonErr := json.Marshal(allItems)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
-		return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-	}
-	return jsonBlob, nil
-}
-
-func ListStargazers(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blob, err := PaginateStargazers(vars["owner"], vars["repo"])
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
-	}
-	w.Write(blob)
-}
-
 func ListStarCounts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	allStargazers, err := PaginateGithub(
@@ -286,29 +213,7 @@ func ListStarCounts(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBlob)
 }
 
-func ListEvents(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blob, err := PaginateEvents(vars["owner"], vars["repo"])
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
-	}
-	w.Write(blob)
-}
-
-func ListIssues(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	blob, err := PaginateIssues(vars["owner"], vars["repo"])
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
-	}
-	w.Write(blob)
-}
-
-func ListOpenIssueCounts(w http.ResponseWriter, r *http.Request) {
+func ListOpenIssuesAndPrs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	allIssues, err := PaginateGithub(
 		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", vars["owner"], vars["repo"]),
@@ -319,13 +224,13 @@ func ListOpenIssueCounts(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
 		return
 	}
-	issueEvents, decodeErr := DecodeIssueEvents(allIssues)
+	events, decodeErr := DecodeIssueAndPrEvents(allIssues)
 	if decodeErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Server Error\n"))
 		return
 	}
-	jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueCounts(issueEvents))
+	jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueAndPrCounts(events))
 	if jsonErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Server Error\n"))
@@ -334,34 +239,11 @@ func ListOpenIssueCounts(w http.ResponseWriter, r *http.Request) {
 	w.Write(jsonBlob)
 }
 
-func ListOpenPrCounts(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	allIssues, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", vars["owner"], vars["repo"]),
-		"application/vnd.github.v3+json",
-	)
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
-	}
-	prEvents, decodeErr := DecodePrEvents(allIssues)
-	if decodeErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueCounts(prEvents))
-	if jsonErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	w.Write(jsonBlob)
-}
+var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
 
 func ServeIndex(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "index.html")
+	indexParams := IndexParams{Owner: os.Getenv("GHVIZ_OWNER"), Repo: os.Getenv("GHVIZ_REPO")}
+	IndexTpl.Execute(w, indexParams)
 }
 
 func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
@@ -369,16 +251,136 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join("dashboard", vars["path"]))
 }
 
+func TopIssues(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		vars["owner"],
+		vars["repo"],
+	)
+	client := &http.Client{}
+	items := make([]map[string]interface{}, 0)
+	allItems := make([]map[string]interface{}, 0)
+
+	for url != "" && len(allItems) < 5 {
+		rr, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+		rr.Header.Add("Accept", "application/vnd.github.v3+json")
+		resp, err := client.Do(rr)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusBadGateway)
+			w.Write([]byte("Github Upstream Error"))
+			return
+		}
+		defer resp.Body.Close()
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		json.Unmarshal(contents, &items)
+		for i := 0; i < len(items) && len(allItems) < 5; i++ {
+			if _, isPr := items[i]["pull_request"]; !isPr {
+				allItems = append(allItems, items[i])
+			}
+		}
+		for i := 0; i < len(items); i++ {
+			items[i] = nil
+		}
+		match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
+		if match != nil {
+			url = match[1]
+		} else {
+			url = ""
+		}
+	}
+	jsonBlob, jsonErr := json.Marshal(allItems)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Server Error\n"))
+		return
+	}
+	w.Write(jsonBlob)
+}
+
+func TopPrs(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		vars["owner"],
+		vars["repo"],
+	)
+	client := &http.Client{}
+	items := make([]map[string]interface{}, 0)
+	allItems := make([]map[string]interface{}, 0)
+
+	for url != "" && len(allItems) < 5 {
+		rr, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+		rr.Header.Add("Accept", "application/vnd.github.v3+json")
+		resp, err := client.Do(rr)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusBadGateway)
+			w.Write([]byte("Github Upstream Error"))
+			return
+		}
+		defer resp.Body.Close()
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		json.Unmarshal(contents, &items)
+		for i := 0; i < len(items) && len(allItems) < 5; i++ {
+			if _, isPr := items[i]["pull_request"]; isPr {
+				allItems = append(allItems, items[i])
+			}
+		}
+		for i := 0; i < len(items); i++ {
+			items[i] = nil
+		}
+		match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
+		if match != nil {
+			url = match[1]
+		} else {
+			url = ""
+		}
+	}
+	jsonBlob, jsonErr := json.Marshal(allItems)
+	if jsonErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Server Error\n"))
+		return
+	}
+	w.Write(jsonBlob)
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	r := mux.NewRouter()
 	r.HandleFunc("/", ServeIndex)
 	r.HandleFunc("/dashboard/{path:.*}", ServeStaticFile)
-	r.HandleFunc("/gh/{owner}/{repo}/events", ListEvents)
-	r.HandleFunc("/gh/{owner}/{repo}/issues", ListIssues)
-	r.HandleFunc("/gh/{owner}/{repo}/stargazers", ListStargazers)
 	r.HandleFunc("/gh/{owner}/{repo}/star_counts", ListStarCounts)
-	r.HandleFunc("/gh/{owner}/{repo}/open_issue_counts", ListOpenIssueCounts)
-	r.HandleFunc("/gh/{owner}/{repo}/open_pr_counts", ListOpenPrCounts)
+	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", ListOpenIssuesAndPrs)
+	r.HandleFunc("/gh/{owner}/{repo}/top_issues", TopIssues)
+	r.HandleFunc("/gh/{owner}/{repo}/top_prs", TopPrs)
 	http.ListenAndServe(":4000", r)
 }

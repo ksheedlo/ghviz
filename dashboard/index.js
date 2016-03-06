@@ -21,7 +21,32 @@ const d3 = require('d3'),
   map = require('lodash.map'),
   $ = require('jquery');
 
-fetch('/gh/rackerlabs/mimic/star_counts').then((resp) => {
+const owner = window.GLOBALS.owner,
+  repo = window.GLOBALS.repo;
+
+function starCaption(stars) {
+  if (stars < 10) {
+    return 'Imagine the possibilities!';
+  }
+  if (stars < 100) {
+    return 'This is starting to pick up steam!';
+  }
+  if (stars < 1000) {
+    return 'It\'ll take over the world someday.';
+  }
+  if (stars < 9001) {
+    return 'Look at all the Internet points!';
+  }
+  if (stars < 10000) {
+    return 'IT\'S OVER NINE THOUSAND!';
+  }
+  if (stars < 100000) {
+    return 'Literally bigger than jQuery.';
+  }
+  return 'World Domination';
+}
+
+fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
   return resp.json();
 })
 .then((starCounts) => {
@@ -29,6 +54,9 @@ fetch('/gh/rackerlabs/mimic/star_counts').then((resp) => {
     return { stars: starCount.Stars,
              timestamp: d3.time.format.iso.parse(starCount.Timestamp) };
   });
+
+  const starCountQsel = document.querySelector('.tile__star-count');
+  starCountQsel.removeChild(starCountQsel.querySelector('.loader__wrapper'));
 
   const starCountEl = $(STAR_COUNT_SELECTOR);
 
@@ -89,31 +117,46 @@ fetch('/gh/rackerlabs/mimic/star_counts').then((resp) => {
       .style('text-anchor', 'end')
       .text('Stars');
 
-  svg.append('path')
+  const path = svg.append('path')
     .datum(formattedCounts)
     .attr('class', 'chart__line chart__line--orange')
     .attr('d', line);
 
+  const totalLength = path.node().getTotalLength();
+
+  path
+    .attr("stroke-dasharray", totalLength + " " + totalLength)
+    .attr("stroke-dashoffset", totalLength)
+    .transition()
+      .duration(1000)
+      .ease("linear")
+      .attr("stroke-dashoffset", 0);
+
+  const starHeadlineTile = document.querySelector('.tile__star-headline');
+  starHeadlineTile.removeChild(starHeadlineTile.querySelector('.loader__wrapper'));
   const starHeadlineTpl = document.querySelector('.template__star-headline');
   const starHeadline = starHeadlineTpl.cloneNode(true);
   starHeadline
     .querySelector('.star-headline__count')
     .appendChild(document.createTextNode(starCounts[starCounts.length-1].Stars));
+  starHeadline
+    .querySelector('.star-headline__caption')
+    .appendChild(document.createTextNode(starCaption(
+      starCounts[starCounts.length-1].Stars)));
   starHeadline.className = '';
-  document.querySelector('.tile__star-headline')
-    .appendChild(starHeadline);
+  starHeadlineTile.appendChild(starHeadline);
 });
 
-fetch('/gh/rackerlabs/mimic/open_issue_counts').then((response) => {
-  return response.json();
-})
-.then(function (issueCounts) {
-  const formattedCounts = map(issueCounts, (issueCount) => {
-    return { openIssues: issueCount.OpenIssues,
-             timestamp: d3.time.format.iso.parse(issueCount.Timestamp) };
-  });
+function drawIssues({ chartLineColor,
+                      issueCounts,
+                      issueCountSelector,
+                      key,
+                      title,
+                      yLabel }) {
+  const issueCountQsel = document.querySelector(issueCountSelector);
+  issueCountQsel.removeChild(issueCountQsel.querySelector('.loader__wrapper'));
 
-  const issueCountEl = $(ISSUE_COUNT_SELECTOR);
+  const issueCountEl = $(issueCountSelector);
 
   const height =
     issueCountEl.height() - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
@@ -136,10 +179,10 @@ fetch('/gh/rackerlabs/mimic/open_issue_counts').then((response) => {
 
   const line = d3.svg.line()
     .x((d) => { return t(d.timestamp); })
-    .y((d) => { return y(d.openIssues); });
+    .y((d) => { return y(d[key]); });
 
   const svg = d3
-    .select(ISSUE_COUNT_SELECTOR)
+    .select(issueCountSelector)
     .append('svg')
       .attr('class', 'chart__svg')
       .attr('width', width + LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right)
@@ -147,15 +190,15 @@ fetch('/gh/rackerlabs/mimic/open_issue_counts').then((response) => {
     .append('g')
       .attr('transform', `translate(${LINE_CHART_MARGIN.left},${LINE_CHART_MARGIN.top})`);
     
-  t.domain(d3.extent(formattedCounts, (d) => { return d.timestamp; }));
-  y.domain(d3.extent(formattedCounts, (d) => { return d.openIssues; }));
+  t.domain(d3.extent(issueCounts, (d) => { return d.timestamp; }));
+  y.domain(d3.extent(issueCounts, (d) => { return d[key]; }));
 
   svg.append('g')
     .attr('class', 'chart__title')
     .append('text')
       .attr('class', 'chart__title-text')
       .attr('transform', `translate(${width / 2 - 80}, 0)`)
-      .text('Open Issues Over Time');
+      .text(title);
 
   svg.append('g')
     .attr('class', 'chart__x-axis')
@@ -170,84 +213,50 @@ fetch('/gh/rackerlabs/mimic/open_issue_counts').then((response) => {
       .attr('y', 6)
       .attr('dy', '.71em')
       .style('text-anchor', 'end')
-      .text('Open Issues');
+      .text(yLabel);
 
-  svg.append('path')
-    .datum(formattedCounts)
-    .attr('class', 'chart__line chart__line--green')
+  const path = svg.append('path')
+    .datum(issueCounts)
+    .attr('class', `chart__line chart__line--${chartLineColor}`)
     .attr('d', line);
-});
 
-fetch('/gh/rackerlabs/mimic/open_pr_counts').then((response) => {
+  const totalLength = path.node().getTotalLength();
+
+  path
+    .attr("stroke-dasharray", totalLength + " " + totalLength)
+    .attr("stroke-dashoffset", totalLength)
+    .transition()
+      .duration(1000)
+      .ease("linear")
+      .attr("stroke-dashoffset", 0);
+}
+
+fetch(`/gh/${owner}/${repo}/issue_counts`).then((response) => {
   return response.json();
 })
-.then(function (prCounts) {
-  const formattedCounts = map(prCounts, (prCount) => {
-    return { openIssues: prCount.OpenIssues,
-             timestamp: d3.time.format.iso.parse(prCount.Timestamp) };
+.then((issueCounts) => {
+  const formattedCounts = map(issueCounts, (issueCount) => {
+    return { openIssues: issueCount.OpenIssues,
+             openPrs: issueCount.OpenPrs,
+             timestamp: d3.time.format.iso.parse(issueCount.Timestamp) };
   });
 
-  const prCountEl = $(PR_COUNT_SELECTOR);
+  drawIssues({
+    chartLineColor: 'green',
+    issueCounts: formattedCounts,
+    issueCountSelector: ISSUE_COUNT_SELECTOR,
+    key: 'openIssues',
+    title: 'Open Issues Over Time',
+    yLabel: 'Open Issues'
+  });
 
-  const height =
-    prCountEl.height() - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
-  const width =
-    prCountEl.width() - (LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right);
-
-  const t = d3.time.scale()
-    .range([0, width]);
-
-  const tAxis = d3.svg.axis()
-    .scale(t)
-    .orient('bottom');
-
-  const y = d3.scale.linear()
-    .range([height, 0]);
-
-  const yAxis = d3.svg.axis()
-    .scale(y)
-    .orient('left');
-
-  const line = d3.svg.line()
-    .x((d) => { return t(d.timestamp); })
-    .y((d) => { return y(d.openIssues); });
-
-  const svg = d3
-    .select(PR_COUNT_SELECTOR)
-    .append('svg')
-      .attr('class', 'chart__svg')
-      .attr('width', width + LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right)
-      .attr('height', height + LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom)
-    .append('g')
-      .attr('transform', `translate(${LINE_CHART_MARGIN.left},${LINE_CHART_MARGIN.top})`);
-    
-  t.domain(d3.extent(formattedCounts, (d) => { return d.timestamp; }));
-  y.domain(d3.extent(formattedCounts, (d) => { return d.openIssues; }));
-
-  svg.append('g')
-    .attr('class', 'chart__title')
-    .append('text')
-      .attr('class', 'chart__title-text')
-      .attr('transform', `translate(${width / 2 - 80}, 0)`)
-      .text('Open PRs Over Time');
-
-  svg.append('g')
-    .attr('class', 'chart__x-axis')
-    .attr('transform', `translate(0,${height})`)
-    .call(tAxis);
-
-  svg.append('g')
-      .attr('class', 'chart__y-axis')
-      .call(yAxis)
-    .append('text')
-      .attr('transform', 'rotate(-90)')
-      .attr('y', 6)
-      .attr('dy', '.71em')
-      .style('text-anchor', 'end')
-      .text('Open PRs');
-
-  svg.append('path')
-    .datum(formattedCounts)
-    .attr('class', 'chart__line chart__line--blue')
-    .attr('d', line);
+  drawIssues({
+    chartLineColor: 'blue',
+    issueCounts: formattedCounts,
+    issueCountSelector: PR_COUNT_SELECTOR,
+    key: 'openPrs',
+    title: 'Open PRs Over Time',
+    yLabel: 'Open PRs'
+  });
 });
+
