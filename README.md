@@ -1,4 +1,4 @@
-# github-visualizer
+# ghviz
 
 A fun dashboard with some Go and D3 and Github metrics.
 

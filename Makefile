@@ -9,11 +9,11 @@ dashboard/bundle.min.js: dashboard/bundle.js
 
 js: dashboard/bundle.min.js
 
-github-visualizer: main.go
+ghviz: main.go
 	go build
 
-go: github-visualizer
+go: ghviz
 
 .PHONY: clean
 clean:
-	rm github-visualizer dashboard/bundle.js dashboard/bundle.min.js
+	rm ghviz dashboard/bundle.js dashboard/bundle.min.js
