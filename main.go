@@ -146,24 +146,37 @@ func ComputeOpenIssueAndPrCounts(issueEvents []IssueAndPrEvent) []OpenIssueAndPr
 	return issueCounts
 }
 
+func SendGithubRequest(client *http.Client, url, mediaType string) (*http.Response, *HttpError) {
+	rr, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		log.Fatal(err)
+		return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
+	}
+	rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+	rr.Header.Add("Accept", mediaType)
+	log.Printf("GET %s\n", url)
+	resp, err := client.Do(rr)
+	if err != nil {
+		log.Fatal(err)
+		return nil, &HttpError{Message: "Github Upstream Error", Status: http.StatusBadGateway}
+	}
+	return resp, nil
+}
+
+func SendGithubV3Request(client *http.Client, url string) (*http.Response, *HttpError) {
+	return SendGithubRequest(client, url, "application/vnd.github.v3+json")
+}
+
 func PaginateGithub(path, mediaType string) ([]map[string]interface{}, *HttpError) {
-	url := fmt.Sprintf("https://api.github.com%s", path)
 	client := &http.Client{}
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
-	for url != "" {
-		rr, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatal(err)
-			return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-		}
-		rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-		rr.Header.Add("Accept", mediaType)
-		resp, err := client.Do(rr)
-		if err != nil {
-			log.Fatal(err)
-			return nil, &HttpError{Message: "Github Upstream Error", Status: http.StatusBadGateway}
+	for url := fmt.Sprintf("https://api.github.com%s", path); url != ""; {
+		resp, httpErr := SendGithubRequest(client, url, mediaType)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			return nil, httpErr
 		}
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
@@ -263,20 +276,11 @@ func TopIssues(w http.ResponseWriter, r *http.Request) {
 	allItems := make([]map[string]interface{}, 0)
 
 	for url != "" && len(allItems) < 5 {
-		rr, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-		rr.Header.Add("Accept", "application/vnd.github.v3+json")
-		resp, err := client.Do(rr)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusBadGateway)
-			w.Write([]byte("Github Upstream Error"))
+		resp, httpErr := SendGithubV3Request(client, url)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(httpErr.Message))
 			return
 		}
 		defer resp.Body.Close()
@@ -324,20 +328,11 @@ func TopPrs(w http.ResponseWriter, r *http.Request) {
 	allItems := make([]map[string]interface{}, 0)
 
 	for url != "" && len(allItems) < 5 {
-		rr, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-		rr.Header.Add("Accept", "application/vnd.github.v3+json")
-		resp, err := client.Do(rr)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusBadGateway)
-			w.Write([]byte("Github Upstream Error"))
+		resp, httpErr := SendGithubV3Request(client, url)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(httpErr.Message))
 			return
 		}
 		defer resp.Body.Close()
