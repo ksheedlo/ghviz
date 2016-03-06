@@ -269,7 +269,8 @@ Promise.all([
   fetch(`/gh/${owner}/${repo}/top_issues`).then((response) => {
     return response.json();
   })
-]).then(([issueCounts, topIssues]) => {
+])
+.then(([issueCounts, topIssues]) => {
   const topIssuesElt = document
     .querySelector('.template__top-issues')
     .cloneNode(true);
@@ -295,4 +296,39 @@ Promise.all([
   const topIssuesTile = document.querySelector('.tile__top-issues');
   topIssuesTile.removeChild(topIssuesTile.querySelector('.loader__wrapper'));
   topIssuesTile.appendChild(topIssuesElt);
+});
+
+Promise.all([
+  issueCountsPromise,
+
+  fetch(`/gh/${owner}/${repo}/top_prs`).then((response) => {
+    return response.json();
+  })
+])
+.then(([issueCounts, topPrs]) => {
+  const topPrsElt = document
+    .querySelector('.template__top-prs')
+    .cloneNode(true);
+
+  const prRowElt = document.querySelector('.template__pr');
+
+  topPrsElt.className = '';
+  topPrsElt
+    .querySelector('.top-issues__header-text')
+    .appendChild(document.createTextNode(
+      `${issueCounts[issueCounts.length-1].OpenPrs} Open PRs`));
+
+  forEach(topPrs, (topPr) => {
+    const prRow = prRowElt.cloneNode(true);
+    prRow.className = 'top-issues__issue';
+    prRow.setAttribute('href', topPr.html_url);
+    prRow
+      .querySelector('.top-issues__issue-title')
+      .appendChild(document.createTextNode(topPr.title));
+    topPrsElt.querySelector('.top-issues__list').appendChild(prRow);
+  });
+
+  const topPrsTile = document.querySelector('.tile__top-prs');
+  topPrsTile.removeChild(topPrsTile.querySelector('.loader__wrapper'));
+  topPrsTile.appendChild(topPrsElt);
 });
