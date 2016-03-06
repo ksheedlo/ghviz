@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/ksheedlo/ghviz/errors"
 	"github.com/ksheedlo/ghviz/github"
 )
 

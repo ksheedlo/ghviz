@@ -14,14 +14,24 @@ import (
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
 
 type GithubClient struct {
+	baseUrl  string
 	client   *http.Client
 	username string
 	password string
 }
 
-func NewClient(username, password string) *GithubClient {
+func NewClientWithBaseUrl(username, password, baseUrl string) *GithubClient {
 	httpClient := &http.Client{}
-	return &GithubClient{client: httpClient, username: username, password: password}
+	githubClient := &GithubClient{}
+	githubClient.client = httpClient
+	githubClient.username = username
+	githubClient.password = password
+	githubClient.baseUrl = baseUrl
+	return githubClient
+}
+
+func NewClient(username, password string) *GithubClient {
+	return NewClientWithBaseUrl(username, password, "https://api.github.com")
 }
 
 func (gh *GithubClient) sendGithubRequest(url, mediaType string) (*http.Response, *errors.HttpError) {
@@ -49,7 +59,7 @@ func (gh *GithubClient) paginateGithub(path, mediaType string) ([]map[string]int
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
-	for url := fmt.Sprintf("https://api.github.com%s", path); url != ""; {
+	for url := fmt.Sprintf("%s%s", gh.baseUrl, path); url != ""; {
 		resp, httpErr := gh.sendGithubRequest(url, mediaType)
 		if httpErr != nil {
 			log.Fatal(httpErr)
@@ -93,7 +103,8 @@ func (gh *GithubClient) ListIssues(owner, repo string) ([]map[string]interface{}
 
 func (gh *GithubClient) ListTopIssues(owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		gh.baseUrl,
 		owner,
 		repo,
 	)
@@ -133,7 +144,8 @@ func (gh *GithubClient) ListTopIssues(owner, repo string, limit int) ([]map[stri
 
 func (gh *GithubClient) ListTopPrs(owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
+		gh.baseUrl,
 		owner,
 		repo,
 	)

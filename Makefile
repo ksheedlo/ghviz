@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all clean test
 all: js go
 
 dashboard/bundle.js: dashboard/index.js
@@ -14,6 +14,8 @@ ghviz: main.go errors/*.go github/*.go
 
 go: ghviz
 
-.PHONY: clean
 clean:
 	rm ghviz dashboard/bundle.js dashboard/bundle.min.js
+
+test:
+	go test github.com/ksheedlo/ghviz/github
