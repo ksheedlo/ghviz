@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -15,18 +14,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/ksheedlo/ghviz/errors"
+	"github.com/ksheedlo/ghviz/github"
 )
 
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
-
-type HttpError struct {
-	Message string
-	Status  int
-}
-
-func (e HttpError) Error() string {
-	return e.Message
-}
 
 type StarEvent struct {
 	StarredAt time.Time
@@ -146,66 +138,10 @@ func ComputeOpenIssueAndPrCounts(issueEvents []IssueAndPrEvent) []OpenIssueAndPr
 	return issueCounts
 }
 
-func SendGithubRequest(client *http.Client, url, mediaType string) (*http.Response, *HttpError) {
-	rr, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Fatal(err)
-		return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-	}
-	rr.SetBasicAuth(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	rr.Header.Add("Accept", mediaType)
-	log.Printf("GET %s\n", url)
-	resp, err := client.Do(rr)
-	if err != nil {
-		log.Fatal(err)
-		return nil, &HttpError{Message: "Github Upstream Error", Status: http.StatusBadGateway}
-	}
-	return resp, nil
-}
-
-func SendGithubV3Request(client *http.Client, url string) (*http.Response, *HttpError) {
-	return SendGithubRequest(client, url, "application/vnd.github.v3+json")
-}
-
-func PaginateGithub(path, mediaType string) ([]map[string]interface{}, *HttpError) {
-	client := &http.Client{}
-	items := make([]map[string]interface{}, 0)
-	allItems := make([]map[string]interface{}, 0)
-
-	for url := fmt.Sprintf("https://api.github.com%s", path); url != ""; {
-		resp, httpErr := SendGithubRequest(client, url, mediaType)
-		if httpErr != nil {
-			log.Fatal(httpErr)
-			return nil, httpErr
-		}
-		defer resp.Body.Close()
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-			return nil, &HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-		}
-		json.Unmarshal(contents, &items)
-		allItems = append(allItems, items...)
-		for i := 0; i < len(items); i++ {
-			items[i] = nil
-		}
-		match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
-		if match != nil {
-			url = match[1]
-		} else {
-			url = ""
-		}
-	}
-
-	return allItems, nil
-}
-
 func ListStarCounts(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	allStargazers, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/stargazers?per_page=100", vars["owner"], vars["repo"]),
-		"application/vnd.github.v3.star+json",
-	)
+	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+	allStargazers, err := githubClient.ListStargazers(vars["owner"], vars["repo"])
 	if err != nil {
 		w.WriteHeader(err.Status)
 		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
@@ -228,10 +164,8 @@ func ListStarCounts(w http.ResponseWriter, r *http.Request) {
 
 func ListOpenIssuesAndPrs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	allIssues, err := PaginateGithub(
-		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", vars["owner"], vars["repo"]),
-		"application/vnd.github.v3+json",
-	)
+	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+	allIssues, err := githubClient.ListIssues(vars["owner"], vars["repo"])
 	if err != nil {
 		w.WriteHeader(err.Status)
 		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
@@ -266,46 +200,13 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 
 func TopIssues(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
-		vars["owner"],
-		vars["repo"],
-	)
-	client := &http.Client{}
-	items := make([]map[string]interface{}, 0)
-	allItems := make([]map[string]interface{}, 0)
-
-	for url != "" && len(allItems) < 5 {
-		resp, httpErr := SendGithubV3Request(client, url)
-		if httpErr != nil {
-			log.Fatal(httpErr)
-			w.WriteHeader(httpErr.Status)
-			w.Write([]byte(httpErr.Message))
-			return
-		}
-		defer resp.Body.Close()
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		json.Unmarshal(contents, &items)
-		for i := 0; i < len(items) && len(allItems) < 5; i++ {
-			if _, isPr := items[i]["pull_request"]; !isPr {
-				allItems = append(allItems, items[i])
-			}
-		}
-		for i := 0; i < len(items); i++ {
-			items[i] = nil
-		}
-		match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
-		if match != nil {
-			url = match[1]
-		} else {
-			url = ""
-		}
+	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+	allItems, httpErr := githubClient.ListTopIssues(vars["owner"], vars["repo"], 5)
+	if httpErr != nil {
+		log.Fatal(httpErr)
+		w.WriteHeader(httpErr.Status)
+		w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+		return
 	}
 	jsonBlob, jsonErr := json.Marshal(allItems)
 	if jsonErr != nil {
@@ -318,46 +219,13 @@ func TopIssues(w http.ResponseWriter, r *http.Request) {
 
 func TopPrs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
-		vars["owner"],
-		vars["repo"],
-	)
-	client := &http.Client{}
-	items := make([]map[string]interface{}, 0)
-	allItems := make([]map[string]interface{}, 0)
-
-	for url != "" && len(allItems) < 5 {
-		resp, httpErr := SendGithubV3Request(client, url)
-		if httpErr != nil {
-			log.Fatal(httpErr)
-			w.WriteHeader(httpErr.Status)
-			w.Write([]byte(httpErr.Message))
-			return
-		}
-		defer resp.Body.Close()
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Fatal(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		json.Unmarshal(contents, &items)
-		for i := 0; i < len(items) && len(allItems) < 5; i++ {
-			if _, isPr := items[i]["pull_request"]; isPr {
-				allItems = append(allItems, items[i])
-			}
-		}
-		for i := 0; i < len(items); i++ {
-			items[i] = nil
-		}
-		match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
-		if match != nil {
-			url = match[1]
-		} else {
-			url = ""
-		}
+	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+	allItems, httpErr := githubClient.ListTopPrs(vars["owner"], vars["repo"], 5)
+	if httpErr != nil {
+		log.Fatal(httpErr)
+		w.WriteHeader(httpErr.Status)
+		w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+		return
 	}
 	jsonBlob, jsonErr := json.Marshal(allItems)
 	if jsonErr != nil {
