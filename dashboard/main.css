@@ -9,3 +9,50 @@ body {
   height: 400px;
   margin-top: 30px;
 }
+
+.tile__star-headline {
+  font-size: 120px;
+}
+
+.chart__x-axis path {
+  display: none;
+}
+
+.chart__x-axis line,
+.chart__y-axis line,
+.chart__y-axis path {
+  fill: none;
+  stroke: #eee;
+  shape-rendering: crispEdges;
+}
+
+.chart__title text,
+.chart__x-axis text,
+.chart__y-axis text {
+  fill: #eee;
+}
+
+.chart__line {
+  fill: none;
+  stroke-width: 2px;
+}
+
+.chart__line--orange {
+  stroke: #FF8300;
+}
+
+.chart__line--green {
+  stroke: #00EA4F;
+}
+
+.chart__line--blue {
+  stroke: #1B3FE6;
+}
+
+.star-headline__text {
+  padding-top: 100px;
+}
+
+.template {
+  display: none;
+}
