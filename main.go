@@ -7,65 +7,18 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"regexp"
 	"runtime"
 	"text/template"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/models"
+	"github.com/ksheedlo/ghviz/simulate"
 )
-
-var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
-
-type StarCount struct {
-	Stars     int
-	Timestamp time.Time
-	UnixTime  int64
-}
-
-type OpenIssueAndPrCount struct {
-	OpenIssues int
-	OpenPrs    int
-	Timestamp  time.Time
-}
 
 type IndexParams struct {
 	Owner string
 	Repo  string
-}
-
-func ComputeStarCounts(starEvents []models.StarEvent) []StarCount {
-	starCounts := make([]StarCount, len(starEvents))
-	for i := 0; i < len(starEvents); i++ {
-		starCounts[i].Stars = i + 1
-		starCounts[i].Timestamp = starEvents[i].StarredAt
-		starCounts[i].UnixTime = starEvents[i].StarredAt.Unix()
-	}
-	return starCounts
-}
-
-func ComputeOpenIssueAndPrCounts(issueEvents []models.IssueEvent) []OpenIssueAndPrCount {
-	issueCounts := make([]OpenIssueAndPrCount, len(issueEvents))
-	openIssues := 0
-	openPrs := 0
-	for i := 0; i < len(issueEvents); i++ {
-		switch {
-		case issueEvents[i].EventType == models.IssueOpened && issueEvents[i].IsPr:
-			openPrs++
-		case issueEvents[i].EventType == models.IssueClosed && issueEvents[i].IsPr:
-			openPrs--
-		case issueEvents[i].EventType == models.IssueOpened && (!issueEvents[i].IsPr):
-			openIssues++
-		default:
-			openIssues--
-		}
-		issueCounts[i].OpenIssues = openIssues
-		issueCounts[i].OpenPrs = openPrs
-		issueCounts[i].Timestamp = issueEvents[i].Timestamp
-	}
-	return issueCounts
 }
 
 func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
@@ -83,7 +36,7 @@ func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Req
 			w.Write([]byte("Server Error\n"))
 			return
 		}
-		jsonBlob, jsonErr := json.Marshal(ComputeStarCounts(starEvents))
+		jsonBlob, jsonErr := json.Marshal(simulate.StarCounts(starEvents))
 		if jsonErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Server Error\n"))
@@ -108,7 +61,7 @@ func ListOpenIssuesAndPrs(gh *github.GithubClient) func(http.ResponseWriter, *ht
 			w.Write([]byte("Server Error\n"))
 			return
 		}
-		jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueAndPrCounts(events))
+		jsonBlob, jsonErr := json.Marshal(simulate.OpenIssueAndPrCounts(events))
 		if jsonErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Server Error\n"))
