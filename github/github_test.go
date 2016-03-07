@@ -20,6 +20,7 @@ func pathAndQueryOnly(t *testing.T, rawurl string) string {
 }
 
 func TestListStargazers(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "application/vnd.github.v3.star+json", r.Header.Get("Accept"))
 		assert.Equal(t,
@@ -39,6 +40,7 @@ func TestListStargazers(t *testing.T) {
 func TestPagination(t *testing.T) {
 	var nextPage string
 
+	t.Parallel()
 	call := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		call++
