@@ -9,50 +9,21 @@ import (
 	"path"
 	"regexp"
 	"runtime"
-	"sort"
 	"text/template"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/models"
 )
 
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
-
-type StarEvent struct {
-	StarredAt time.Time
-}
 
 type StarCount struct {
 	Stars     int
 	Timestamp time.Time
 	UnixTime  int64
 }
-
-type ByStarredAt []StarEvent
-
-func (a ByStarredAt) Len() int           { return len(a) }
-func (a ByStarredAt) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByStarredAt) Less(i, j int) bool { return a[i].StarredAt.Before(a[j].StarredAt) }
-
-type IssueEventType int
-
-const (
-	IssueOpened IssueEventType = iota
-	IssueClosed
-)
-
-type IssueAndPrEvent struct {
-	EventType IssueEventType
-	IsPr      bool
-	Timestamp time.Time
-}
-
-type ByIprTimestamp []IssueAndPrEvent
-
-func (a ByIprTimestamp) Len() int           { return len(a) }
-func (a ByIprTimestamp) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByIprTimestamp) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
 
 type OpenIssueAndPrCount struct {
 	OpenIssues int
@@ -65,20 +36,7 @@ type IndexParams struct {
 	Repo  string
 }
 
-func DecodeStarEvents(apiObjects []map[string]interface{}) ([]StarEvent, error) {
-	starEvents := make([]StarEvent, len(apiObjects))
-	for i := 0; i < len(apiObjects); i++ {
-		starredAt, err := time.Parse(time.RFC3339, apiObjects[i]["starred_at"].(string))
-		if err != nil {
-			return nil, err
-		}
-		starEvents[i].StarredAt = starredAt
-	}
-	sort.Sort(ByStarredAt(starEvents))
-	return starEvents, nil
-}
-
-func ComputeStarCounts(starEvents []StarEvent) []StarCount {
+func ComputeStarCounts(starEvents []models.StarEvent) []StarCount {
 	starCounts := make([]StarCount, len(starEvents))
 	for i := 0; i < len(starEvents); i++ {
 		starCounts[i].Stars = i + 1
@@ -88,44 +46,17 @@ func ComputeStarCounts(starEvents []StarEvent) []StarCount {
 	return starCounts
 }
 
-func DecodeIssueAndPrEvents(apiObjects []map[string]interface{}) ([]IssueAndPrEvent, error) {
-	var issueEvents []IssueAndPrEvent
-	for i := 0; i < len(apiObjects); i++ {
-		issueOpened := IssueAndPrEvent{EventType: IssueOpened}
-		_, issueOpened.IsPr = apiObjects[i]["pull_request"]
-		createdAt, err := time.Parse(time.RFC3339, apiObjects[i]["created_at"].(string))
-		if err != nil {
-			return nil, err
-		}
-		issueOpened.Timestamp = createdAt
-		issueEvents = append(issueEvents, issueOpened)
-
-		if closedAt := apiObjects[i]["closed_at"]; closedAt != nil {
-			issueClosed := IssueAndPrEvent{EventType: IssueClosed}
-			issueClosed.IsPr = issueOpened.IsPr
-			closedAt, err := time.Parse(time.RFC3339, closedAt.(string))
-			if err != nil {
-				return nil, err
-			}
-			issueClosed.Timestamp = closedAt
-			issueEvents = append(issueEvents, issueClosed)
-		}
-	}
-	sort.Sort(ByIprTimestamp(issueEvents))
-	return issueEvents, nil
-}
-
-func ComputeOpenIssueAndPrCounts(issueEvents []IssueAndPrEvent) []OpenIssueAndPrCount {
+func ComputeOpenIssueAndPrCounts(issueEvents []models.IssueEvent) []OpenIssueAndPrCount {
 	issueCounts := make([]OpenIssueAndPrCount, len(issueEvents))
 	openIssues := 0
 	openPrs := 0
 	for i := 0; i < len(issueEvents); i++ {
 		switch {
-		case issueEvents[i].EventType == IssueOpened && issueEvents[i].IsPr:
+		case issueEvents[i].EventType == models.IssueOpened && issueEvents[i].IsPr:
 			openPrs++
-		case issueEvents[i].EventType == IssueClosed && issueEvents[i].IsPr:
+		case issueEvents[i].EventType == models.IssueClosed && issueEvents[i].IsPr:
 			openPrs--
-		case issueEvents[i].EventType == IssueOpened && (!issueEvents[i].IsPr):
+		case issueEvents[i].EventType == models.IssueOpened && (!issueEvents[i].IsPr):
 			openIssues++
 		default:
 			openIssues--
@@ -146,7 +77,7 @@ func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Req
 			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
 			return
 		}
-		starEvents, decodeErr := DecodeStarEvents(allStargazers)
+		starEvents, decodeErr := models.StarEventsFromApi(allStargazers)
 		if decodeErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Server Error\n"))
@@ -171,7 +102,7 @@ func ListOpenIssuesAndPrs(gh *github.GithubClient) func(http.ResponseWriter, *ht
 			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
 			return
 		}
-		events, decodeErr := DecodeIssueAndPrEvents(allIssues)
+		events, decodeErr := models.IssueEventsFromApi(allIssues)
 		if decodeErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Server Error\n"))
