@@ -137,52 +137,54 @@ func ComputeOpenIssueAndPrCounts(issueEvents []IssueAndPrEvent) []OpenIssueAndPr
 	return issueCounts
 }
 
-func ListStarCounts(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	allStargazers, err := githubClient.ListStargazers(vars["owner"], vars["repo"])
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
+func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		allStargazers, err := gh.ListStargazers(vars["owner"], vars["repo"])
+		if err != nil {
+			w.WriteHeader(err.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
+			return
+		}
+		starEvents, decodeErr := DecodeStarEvents(allStargazers)
+		if decodeErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		jsonBlob, jsonErr := json.Marshal(ComputeStarCounts(starEvents))
+		if jsonErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		w.Write(jsonBlob)
 	}
-	starEvents, decodeErr := DecodeStarEvents(allStargazers)
-	if decodeErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	jsonBlob, jsonErr := json.Marshal(ComputeStarCounts(starEvents))
-	if jsonErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	w.Write(jsonBlob)
 }
 
-func ListOpenIssuesAndPrs(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	allIssues, err := githubClient.ListIssues(vars["owner"], vars["repo"])
-	if err != nil {
-		w.WriteHeader(err.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-		return
+func ListOpenIssuesAndPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		allIssues, err := gh.ListIssues(vars["owner"], vars["repo"])
+		if err != nil {
+			w.WriteHeader(err.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
+			return
+		}
+		events, decodeErr := DecodeIssueAndPrEvents(allIssues)
+		if decodeErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueAndPrCounts(events))
+		if jsonErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		w.Write(jsonBlob)
 	}
-	events, decodeErr := DecodeIssueAndPrEvents(allIssues)
-	if decodeErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	jsonBlob, jsonErr := json.Marshal(ComputeOpenIssueAndPrCounts(events))
-	if jsonErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	w.Write(jsonBlob)
 }
 
 var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
@@ -197,52 +199,55 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join("dashboard", vars["path"]))
 }
 
-func TopIssues(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	allItems, httpErr := githubClient.ListTopIssues(vars["owner"], vars["repo"], 5)
-	if httpErr != nil {
-		log.Fatal(httpErr)
-		w.WriteHeader(httpErr.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
-		return
+func TopIssues(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		allItems, httpErr := gh.ListTopIssues(vars["owner"], vars["repo"], 5)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+			return
+		}
+		jsonBlob, jsonErr := json.Marshal(allItems)
+		if jsonErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		w.Write(jsonBlob)
 	}
-	jsonBlob, jsonErr := json.Marshal(allItems)
-	if jsonErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	w.Write(jsonBlob)
 }
 
-func TopPrs(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	githubClient := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	allItems, httpErr := githubClient.ListTopPrs(vars["owner"], vars["repo"], 5)
-	if httpErr != nil {
-		log.Fatal(httpErr)
-		w.WriteHeader(httpErr.Status)
-		w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
-		return
+func TopPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		allItems, httpErr := gh.ListTopPrs(vars["owner"], vars["repo"], 5)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+			return
+		}
+		jsonBlob, jsonErr := json.Marshal(allItems)
+		if jsonErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("Server Error\n"))
+			return
+		}
+		w.Write(jsonBlob)
 	}
-	jsonBlob, jsonErr := json.Marshal(allItems)
-	if jsonErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Server Error\n"))
-		return
-	}
-	w.Write(jsonBlob)
 }
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	r := mux.NewRouter()
+	gh := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
 	r.HandleFunc("/", ServeIndex)
 	r.HandleFunc("/dashboard/{path:.*}", ServeStaticFile)
-	r.HandleFunc("/gh/{owner}/{repo}/star_counts", ListStarCounts)
-	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", ListOpenIssuesAndPrs)
-	r.HandleFunc("/gh/{owner}/{repo}/top_issues", TopIssues)
-	r.HandleFunc("/gh/{owner}/{repo}/top_prs", TopPrs)
+	r.HandleFunc("/gh/{owner}/{repo}/star_counts", ListStarCounts(gh))
+	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", ListOpenIssuesAndPrs(gh))
+	r.HandleFunc("/gh/{owner}/{repo}/top_issues", TopIssues(gh))
+	r.HandleFunc("/gh/{owner}/{repo}/top_prs", TopPrs(gh))
 	http.ListenAndServe(":4000", r)
 }
