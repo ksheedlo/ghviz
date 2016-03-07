@@ -18,4 +18,4 @@ clean:
 	rm ghviz dashboard/bundle.js dashboard/bundle.min.js
 
 test:
-	go test github.com/ksheedlo/ghviz/github github.com/ksheedlo/ghviz/models
+	go test github.com/ksheedlo/ghviz/github github.com/ksheedlo/ghviz/models github.com/ksheedlo/ghviz/simulate
