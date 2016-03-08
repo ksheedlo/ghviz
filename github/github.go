@@ -9,30 +9,44 @@ import (
 	"regexp"
 	"time"
 
+	"gopkg.in/redis.v3"
+
 	"github.com/ksheedlo/ghviz/errors"
 )
 
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
 
 type Client struct {
-	baseUrl  string
-	client   *http.Client
-	username string
-	password string
+	baseUrl     string
+	httpClient  *http.Client
+	password    string
+	redisClient *redis.Client
+	username    string
 }
 
-func NewClientWithBaseUrl(username, password, baseUrl string) *Client {
+type Options struct {
+	BaseUrl     string
+	Password    string
+	RedisClient *redis.Client
+	Username    string
+}
+
+func withDefaultBaseUrl(baseUrl string) string {
+	if baseUrl == "" {
+		return "https://api.github.com"
+	}
+	return baseUrl
+}
+
+func NewClient(options *Options) *Client {
 	httpClient := &http.Client{}
-	githubClient := &Client{}
-	githubClient.client = httpClient
-	githubClient.username = username
-	githubClient.password = password
-	githubClient.baseUrl = baseUrl
-	return githubClient
-}
-
-func NewClient(username, password string) *Client {
-	return NewClientWithBaseUrl(username, password, "https://api.github.com")
+	client := &Client{}
+	client.httpClient = httpClient
+	client.baseUrl = withDefaultBaseUrl(options.BaseUrl)
+	client.password = options.Password
+	client.redisClient = options.RedisClient
+	client.username = options.Username
+	return client
 }
 
 func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
@@ -44,7 +58,7 @@ func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (
 	rr.SetBasicAuth(gh.username, gh.password)
 	rr.Header.Add("Accept", mediaType)
 	startTime := time.Now()
-	resp, err := gh.client.Do(rr)
+	resp, err := gh.httpClient.Do(rr)
 	logger.Printf("send GET %s %s\n", url, time.Since(startTime).String())
 	if err != nil {
 		logger.Fatal(err)

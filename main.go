@@ -12,6 +12,8 @@ import (
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
+	"gopkg.in/redis.v3"
+
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/middleware"
 	"github.com/ksheedlo/ghviz/models"
@@ -130,10 +132,32 @@ func TopPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+func withDefaultStr(config, default_ string) string {
+	if config == "" {
+		return default_
+	}
+	return config
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	r := mux.NewRouter()
-	gh := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
+
+	var redisClient *redis.Client
+	if redisHost := os.Getenv("GHVIZ_REDIS_HOST"); redisHost != "" {
+		redisPort := withDefaultStr(os.Getenv("GHVIZ_REDIS_PORT"), "6379")
+		redisClient = redis.NewClient(&redis.Options{
+			Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
+			Password: os.Getenv("GHVIZ_REDIS_PASSWORD"),
+			DB:       0,
+		})
+	}
+
+	gh := github.NewClient(&github.Options{
+		Username:    os.Getenv("GITHUB_USERNAME"),
+		Password:    os.Getenv("GITHUB_PASSWORD"),
+		RedisClient: redisClient,
+	})
 	withMiddleware := middleware.Compose(
 		middleware.AddResponseId,
 		middleware.AddLogger,
