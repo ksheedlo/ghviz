@@ -9,7 +9,7 @@ dashboard/bundle.min.js: dashboard/bundle.js
 
 js: dashboard/bundle.min.js
 
-ghviz: main.go errors/*.go github/*.go models/*.go simulate/*.go
+ghviz: main.go errors/*.go github/*.go middleware/*.go models/*.go simulate/*.go
 	go build
 
 go: ghviz
