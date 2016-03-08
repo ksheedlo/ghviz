@@ -77,9 +77,10 @@ func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Req
 
 var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
 
-func ServeIndex(w http.ResponseWriter, r *http.Request) {
-	indexParams := IndexParams{Owner: os.Getenv("GHVIZ_OWNER"), Repo: os.Getenv("GHVIZ_REPO")}
-	IndexTpl.Execute(w, indexParams)
+func ServeIndex(params *IndexParams) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		IndexTpl.Execute(w, params)
+	}
 }
 
 func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +139,10 @@ func main() {
 		middleware.AddLogger,
 		middleware.LogRequest,
 	)
-	r.HandleFunc("/", withMiddleware(ServeIndex))
+	r.HandleFunc("/", withMiddleware(ServeIndex(&IndexParams{
+		Owner: os.Getenv("GHVIZ_OWNER"),
+		Repo:  os.Getenv("GHVIZ_REPO"),
+	})))
 	r.HandleFunc("/dashboard/{path:.*}", withMiddleware(ServeStaticFile))
 	r.HandleFunc("/gh/{owner}/{repo}/star_counts", withMiddleware(ListStarCounts(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", withMiddleware(ListOpenIssuesAndPrs(gh)))
