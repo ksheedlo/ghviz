@@ -2,9 +2,11 @@ package github
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +19,12 @@ func pathAndQueryOnly(t *testing.T, rawurl string) string {
 		return fmt.Sprintf("%s?%s", urlObj.Path, urlObj.RawQuery)
 	}
 	return urlObj.Path
+}
+
+func dummyLogger(t *testing.T) *log.Logger {
+	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0777)
+	assert.NoError(t, err)
+	return log.New(devnull, "", 0)
 }
 
 func TestListStargazers(t *testing.T) {
@@ -32,7 +40,7 @@ func TestListStargazers(t *testing.T) {
 	defer ts.Close()
 
 	gh := NewClientWithBaseUrl("tester", "secretlel", ts.URL)
-	allStargazers, err := gh.ListStargazers("angular", "angular")
+	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allStargazers), 3)
 }
@@ -55,7 +63,7 @@ func TestPagination(t *testing.T) {
 	nextPage = fmt.Sprintf("%s/repos/angular/angular/stargazers?per_page=100&page=2", ts.URL)
 
 	gh := NewClientWithBaseUrl("tester", "secretlel", ts.URL)
-	allStargazers, err := gh.ListStargazers("angular", "angular")
+	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
 	assert.Equal(t, call, 2)
 	assert.Equal(t, len(allStargazers), 6)
@@ -73,7 +81,7 @@ func TestListIssues(t *testing.T) {
 	defer ts.Close()
 
 	gh := NewClientWithBaseUrl("tester", "secretlel", ts.URL)
-	allStargazers, err := gh.ListStargazers("lodash", "lodash")
+	allStargazers, err := gh.ListStargazers(dummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allStargazers), 4)
 }

@@ -10,8 +10,10 @@ import (
 	"runtime"
 	"text/template"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/middleware"
 	"github.com/ksheedlo/ghviz/models"
 	"github.com/ksheedlo/ghviz/simulate"
 )
@@ -23,8 +25,9 @@ type IndexParams struct {
 
 func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
-		allStargazers, err := gh.ListStargazers(vars["owner"], vars["repo"])
+		allStargazers, err := gh.ListStargazers(logger, vars["owner"], vars["repo"])
 		if err != nil {
 			w.WriteHeader(err.Status)
 			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
@@ -48,8 +51,9 @@ func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Req
 
 func ListOpenIssuesAndPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
-		allIssues, err := gh.ListIssues(vars["owner"], vars["repo"])
+		allIssues, err := gh.ListIssues(logger, vars["owner"], vars["repo"])
 		if err != nil {
 			w.WriteHeader(err.Status)
 			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
@@ -85,8 +89,9 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 
 func TopIssues(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
-		allItems, httpErr := gh.ListTopIssues(vars["owner"], vars["repo"], 5)
+		allItems, httpErr := gh.ListTopIssues(logger, vars["owner"], vars["repo"], 5)
 		if httpErr != nil {
 			log.Fatal(httpErr)
 			w.WriteHeader(httpErr.Status)
@@ -105,8 +110,9 @@ func TopIssues(gh *github.GithubClient) func(http.ResponseWriter, *http.Request)
 
 func TopPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
-		allItems, httpErr := gh.ListTopPrs(vars["owner"], vars["repo"], 5)
+		allItems, httpErr := gh.ListTopPrs(logger, vars["owner"], vars["repo"], 5)
 		if httpErr != nil {
 			log.Fatal(httpErr)
 			w.WriteHeader(httpErr.Status)
@@ -127,11 +133,16 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	r := mux.NewRouter()
 	gh := github.NewClient(os.Getenv("GITHUB_USERNAME"), os.Getenv("GITHUB_PASSWORD"))
-	r.HandleFunc("/", ServeIndex)
-	r.HandleFunc("/dashboard/{path:.*}", ServeStaticFile)
-	r.HandleFunc("/gh/{owner}/{repo}/star_counts", ListStarCounts(gh))
-	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", ListOpenIssuesAndPrs(gh))
-	r.HandleFunc("/gh/{owner}/{repo}/top_issues", TopIssues(gh))
-	r.HandleFunc("/gh/{owner}/{repo}/top_prs", TopPrs(gh))
+	withMiddleware := middleware.Compose(
+		middleware.AddResponseId,
+		middleware.AddLogger,
+		middleware.LogRequest,
+	)
+	r.HandleFunc("/", withMiddleware(ServeIndex))
+	r.HandleFunc("/dashboard/{path:.*}", withMiddleware(ServeStaticFile))
+	r.HandleFunc("/gh/{owner}/{repo}/star_counts", withMiddleware(ListStarCounts(gh)))
+	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", withMiddleware(ListOpenIssuesAndPrs(gh)))
+	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(TopIssues(gh)))
+	r.HandleFunc("/gh/{owner}/{repo}/top_prs", withMiddleware(TopPrs(gh)))
 	http.ListenAndServe(":4000", r)
 }

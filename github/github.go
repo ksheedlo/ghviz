@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/ksheedlo/ghviz/errors"
 )
@@ -34,41 +35,42 @@ func NewClient(username, password string) *GithubClient {
 	return NewClientWithBaseUrl(username, password, "https://api.github.com")
 }
 
-func (gh *GithubClient) sendGithubRequest(url, mediaType string) (*http.Response, *errors.HttpError) {
+func (gh *GithubClient) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
 	rr, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 		return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 	}
 	rr.SetBasicAuth(gh.username, gh.password)
 	rr.Header.Add("Accept", mediaType)
-	log.Printf("GET %s\n", url)
+	startTime := time.Now()
 	resp, err := gh.client.Do(rr)
+	logger.Printf("send GET %s %s\n", url, time.Since(startTime).String())
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 		return nil, &errors.HttpError{Message: "Github Upstream Error", Status: http.StatusBadGateway}
 	}
 	return resp, nil
 }
 
-func (gh *GithubClient) sendGithubV3Request(url string) (*http.Response, *errors.HttpError) {
-	return gh.sendGithubRequest(url, "application/vnd.github.v3+json")
+func (gh *GithubClient) sendGithubV3Request(logger *log.Logger, url string) (*http.Response, *errors.HttpError) {
+	return gh.sendGithubRequest(logger, url, "application/vnd.github.v3+json")
 }
 
-func (gh *GithubClient) paginateGithub(path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *GithubClient) paginateGithub(logger *log.Logger, path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
 	for url := fmt.Sprintf("%s%s", gh.baseUrl, path); url != ""; {
-		resp, httpErr := gh.sendGithubRequest(url, mediaType)
+		resp, httpErr := gh.sendGithubRequest(logger, url, mediaType)
 		if httpErr != nil {
-			log.Fatal(httpErr)
+			logger.Fatal(httpErr)
 			return nil, httpErr
 		}
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 			return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 		}
 		json.Unmarshal(contents, &items)
@@ -87,21 +89,23 @@ func (gh *GithubClient) paginateGithub(path, mediaType string) ([]map[string]int
 	return allItems, nil
 }
 
-func (gh *GithubClient) ListStargazers(owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *GithubClient) ListStargazers(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
 	return gh.paginateGithub(
+		logger,
 		fmt.Sprintf("/repos/%s/%s/stargazers?per_page=100", owner, repo),
 		"application/vnd.github.v3.star+json",
 	)
 }
 
-func (gh *GithubClient) ListIssues(owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *GithubClient) ListIssues(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
 	return gh.paginateGithub(
+		logger,
 		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
 		"application/vnd.github.v3+json",
 	)
 }
 
-func (gh *GithubClient) ListTopIssues(owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *GithubClient) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
 		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
 		gh.baseUrl,
@@ -112,14 +116,14 @@ func (gh *GithubClient) ListTopIssues(owner, repo string, limit int) ([]map[stri
 	allItems := make([]map[string]interface{}, 0)
 
 	for url != "" && len(allItems) < limit {
-		resp, httpErr := gh.sendGithubV3Request(url)
+		resp, httpErr := gh.sendGithubV3Request(logger, url)
 		if httpErr != nil {
 			return nil, httpErr
 		}
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 			return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 		}
 		json.Unmarshal(contents, &items)
@@ -142,7 +146,7 @@ func (gh *GithubClient) ListTopIssues(owner, repo string, limit int) ([]map[stri
 	return allItems, nil
 }
 
-func (gh *GithubClient) ListTopPrs(owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *GithubClient) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
 		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
 		gh.baseUrl,
@@ -153,14 +157,14 @@ func (gh *GithubClient) ListTopPrs(owner, repo string, limit int) ([]map[string]
 	allItems := make([]map[string]interface{}, 0)
 
 	for url != "" && len(allItems) < limit {
-		resp, httpErr := gh.sendGithubV3Request(url)
+		resp, httpErr := gh.sendGithubV3Request(logger, url)
 		if httpErr != nil {
 			return nil, httpErr
 		}
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Fatal(err)
+			logger.Fatal(err)
 			return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 		}
 		json.Unmarshal(contents, &items)
