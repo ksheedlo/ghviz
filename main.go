@@ -23,7 +23,7 @@ type IndexParams struct {
 	Repo  string
 }
 
-func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+func ListStarCounts(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
@@ -49,7 +49,7 @@ func ListStarCounts(gh *github.GithubClient) func(http.ResponseWriter, *http.Req
 	}
 }
 
-func ListOpenIssuesAndPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
@@ -87,7 +87,7 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join("dashboard", vars["path"]))
 }
 
-func TopIssues(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+func TopIssues(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
@@ -108,7 +108,7 @@ func TopIssues(gh *github.GithubClient) func(http.ResponseWriter, *http.Request)
 	}
 }
 
-func TopPrs(gh *github.GithubClient) func(http.ResponseWriter, *http.Request) {
+func TopPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)

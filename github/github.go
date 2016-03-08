@@ -14,16 +14,16 @@ import (
 
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
 
-type GithubClient struct {
+type Client struct {
 	baseUrl  string
 	client   *http.Client
 	username string
 	password string
 }
 
-func NewClientWithBaseUrl(username, password, baseUrl string) *GithubClient {
+func NewClientWithBaseUrl(username, password, baseUrl string) *Client {
 	httpClient := &http.Client{}
-	githubClient := &GithubClient{}
+	githubClient := &Client{}
 	githubClient.client = httpClient
 	githubClient.username = username
 	githubClient.password = password
@@ -31,11 +31,11 @@ func NewClientWithBaseUrl(username, password, baseUrl string) *GithubClient {
 	return githubClient
 }
 
-func NewClient(username, password string) *GithubClient {
+func NewClient(username, password string) *Client {
 	return NewClientWithBaseUrl(username, password, "https://api.github.com")
 }
 
-func (gh *GithubClient) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
+func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
 	rr, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		logger.Fatal(err)
@@ -53,11 +53,11 @@ func (gh *GithubClient) sendGithubRequest(logger *log.Logger, url, mediaType str
 	return resp, nil
 }
 
-func (gh *GithubClient) sendGithubV3Request(logger *log.Logger, url string) (*http.Response, *errors.HttpError) {
+func (gh *Client) sendGithubV3Request(logger *log.Logger, url string) (*http.Response, *errors.HttpError) {
 	return gh.sendGithubRequest(logger, url, "application/vnd.github.v3+json")
 }
 
-func (gh *GithubClient) paginateGithub(logger *log.Logger, path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) paginateGithub(logger *log.Logger, path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
@@ -89,7 +89,7 @@ func (gh *GithubClient) paginateGithub(logger *log.Logger, path, mediaType strin
 	return allItems, nil
 }
 
-func (gh *GithubClient) ListStargazers(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
 	return gh.paginateGithub(
 		logger,
 		fmt.Sprintf("/repos/%s/%s/stargazers?per_page=100", owner, repo),
@@ -97,7 +97,7 @@ func (gh *GithubClient) ListStargazers(logger *log.Logger, owner, repo string) (
 	)
 }
 
-func (gh *GithubClient) ListIssues(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
 	return gh.paginateGithub(
 		logger,
 		fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
@@ -105,7 +105,7 @@ func (gh *GithubClient) ListIssues(logger *log.Logger, owner, repo string) ([]ma
 	)
 }
 
-func (gh *GithubClient) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
 		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
 		gh.baseUrl,
@@ -146,7 +146,7 @@ func (gh *GithubClient) ListTopIssues(logger *log.Logger, owner, repo string, li
 	return allItems, nil
 }
 
-func (gh *GithubClient) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
 	url := fmt.Sprintf(
 		"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
 		gh.baseUrl,
