@@ -18,7 +18,7 @@ func AddResponseId(handler Handler) Handler {
 		}
 		responseId := responseIdInt.Text(36)
 		context.Set(r, CtxResponseId, responseId)
-		w.Header().Add("X-Request-Id", responseId)
+		w.Header().Add("X-Response-Id", responseId)
 		handler(w, r)
 	}
 }
