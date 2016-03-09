@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/ksheedlo/ghviz/models"
@@ -9,6 +10,13 @@ import (
 type StarCount struct {
 	Stars     int
 	Timestamp time.Time
+}
+
+func (sc *StarCount) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"stars":     sc.Stars,
+		"timestamp": sc.Timestamp,
+	})
 }
 
 func StarCounts(starEvents []models.StarEvent) []StarCount {

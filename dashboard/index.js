@@ -52,8 +52,8 @@ fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
 })
 .then((starCounts) => {
   const formattedCounts = map(starCounts, (starCount) => {
-    return { stars: starCount.Stars,
-             timestamp: d3.time.format.iso.parse(starCount.Timestamp) };
+    return { stars: starCount.stars,
+             timestamp: d3.time.format.iso.parse(starCount.timestamp) };
   });
 
   const starCountQsel = document.querySelector('.tile__star-count');
@@ -139,11 +139,11 @@ fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
   const starHeadline = starHeadlineTpl.cloneNode(true);
   starHeadline
     .querySelector('.star-headline__count')
-    .appendChild(document.createTextNode(starCounts[starCounts.length-1].Stars));
+    .appendChild(document.createTextNode(starCounts[starCounts.length-1].stars));
   starHeadline
     .querySelector('.star-headline__caption')
     .appendChild(document.createTextNode(starCaption(
-      starCounts[starCounts.length-1].Stars)));
+      starCounts[starCounts.length-1].stars)));
   starHeadline.className = '';
   starHeadlineTile.appendChild(starHeadline);
 });
@@ -239,9 +239,9 @@ const issueCountsPromise = fetch(`/gh/${owner}/${repo}/issue_counts`).then(
 
 issueCountsPromise.then((issueCounts) => {
   const formattedCounts = map(issueCounts, (issueCount) => {
-    return { openIssues: issueCount.OpenIssues,
-             openPrs: issueCount.OpenPrs,
-             timestamp: d3.time.format.iso.parse(issueCount.Timestamp) };
+    return { openIssues: issueCount.open_issues,
+             openPrs: issueCount.open_prs,
+             timestamp: d3.time.format.iso.parse(issueCount.timestamp) };
   });
 
   drawIssues({
@@ -281,7 +281,7 @@ Promise.all([
   topIssuesElt
     .querySelector('.top-issues__header-text')
     .appendChild(document.createTextNode(
-      `${issueCounts[issueCounts.length-1].OpenIssues} Open Issues`));
+      `${issueCounts[issueCounts.length-1].open_issues} Open Issues`));
 
   forEach(topIssues, (topIssue) => {
     const issueRow = issueRowElt.cloneNode(true);
@@ -316,7 +316,7 @@ Promise.all([
   topPrsElt
     .querySelector('.top-issues__header-text')
     .appendChild(document.createTextNode(
-      `${issueCounts[issueCounts.length-1].OpenPrs} Open PRs`));
+      `${issueCounts[issueCounts.length-1].open_prs} Open PRs`));
 
   forEach(topPrs, (topPr) => {
     const prRow = prRowElt.cloneNode(true);

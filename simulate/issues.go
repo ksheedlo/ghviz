@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/ksheedlo/ghviz/models"
@@ -10,6 +11,14 @@ type OpenIssueAndPrCount struct {
 	OpenIssues int
 	OpenPrs    int
 	Timestamp  time.Time
+}
+
+func (ict *OpenIssueAndPrCount) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"open_issues": ict.OpenIssues,
+		"open_prs":    ict.OpenPrs,
+		"timestamp":   ict.Timestamp,
+	})
 }
 
 func OpenIssueAndPrCounts(issueEvents []models.IssueEvent) []OpenIssueAndPrCount {
