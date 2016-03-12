@@ -75,14 +75,24 @@ func TestPagination(t *testing.T) {
 	assert.Equal(t, len(allStargazers), 6)
 }
 
+const issuesJson string = `[
+{"created_at":"2016-03-07T03:26:14.739Z","closed_at":null,
+ "events_url":"https://api.example.com/issues/1/events"},
+{"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z",
+ "events_url":"https://api.example.com/issues/2/events"},
+{"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
+ "pull_request":{},"events_url":"https://api.example.com/issues/3/events"},
+{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},
+ "events_url":"https://api.example.com/issues/4/events"}]`
+
 func TestListIssues(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "application/vnd.github.v3.star+json", r.Header.Get("Accept"))
+		assert.Equal(t, "application/vnd.github.v3+json", r.Header.Get("Accept"))
 		assert.Equal(t,
-			"/repos/lodash/lodash/stargazers?per_page=100",
+			"/repos/lodash/lodash/issues?per_page=100&state=all&sort=created&direction=asc",
 			pathAndQueryOnly(t, r.URL.String()),
 		)
-		fmt.Fprintln(w, "[{}, {}, {}, {}]")
+		fmt.Fprintln(w, issuesJson)
 	}))
 	defer ts.Close()
 
@@ -90,7 +100,46 @@ func TestListIssues(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allStargazers, err := gh.ListStargazers(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
-	assert.Equal(t, len(allStargazers), 4)
+	assert.Equal(t, len(allIssues), 4)
+	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
+	assert.False(t, allIssues[0].IsPr)
+	assert.True(t, allIssues[2].IsPr)
+}
+
+const issuesBadCreatedAtJson = `[
+{"created_at":"fish","events_url":"https://api.example.com/issues/1/events"}]`
+
+func TestListIssuesBadCreatedAt(t *testing.T) {
+	t.SkipNow()
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesBadCreatedAtJson)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.Error(t, err)
+}
+
+const issuesBadClosedAtJson = `[
+{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish",
+ "events_url":"https://api.example.com/issues/1/events"}]`
+
+func TestListIssuesBadClosedAt(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesBadClosedAtJson)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.Error(t, err)
 }

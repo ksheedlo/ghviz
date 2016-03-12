@@ -1,9 +1,9 @@
 package simulate
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/ksheedlo/ghviz/models"
 	"github.com/stretchr/testify/assert"
@@ -22,10 +22,38 @@ func TestOpenIssueAndPrCounts(t *testing.T) {
 	expectedPrCounts := []int{0, 0, 0, 1, 2, 1}
 	expectedIssueCounts := []int{1, 0, 1, 1, 1, 1}
 
-	issues := make([]map[string]interface{}, 4)
-	json.Unmarshal([]byte(issuesJson), &issues)
-	issueEvents, err := models.IssueEventsFromApi(issues)
-	assert.NoError(t, err)
+	issueEvents := []models.IssueEvent{
+		models.IssueEvent{
+			EventType: models.IssueOpened,
+			IsPr:      false,
+			Timestamp: time.Unix(1, 0),
+		},
+		models.IssueEvent{
+			EventType: models.IssueClosed,
+			IsPr:      false,
+			Timestamp: time.Unix(2, 0),
+		},
+		models.IssueEvent{
+			EventType: models.IssueOpened,
+			IsPr:      false,
+			Timestamp: time.Unix(3, 0),
+		},
+		models.IssueEvent{
+			EventType: models.IssueOpened,
+			IsPr:      true,
+			Timestamp: time.Unix(4, 0),
+		},
+		models.IssueEvent{
+			EventType: models.IssueOpened,
+			IsPr:      true,
+			Timestamp: time.Unix(5, 0),
+		},
+		models.IssueEvent{
+			EventType: models.IssueClosed,
+			IsPr:      true,
+			Timestamp: time.Unix(6, 0),
+		},
+	}
 
 	issueCounts := OpenIssueAndPrCounts(issueEvents)
 	assert.Len(t, issueCounts, 6)

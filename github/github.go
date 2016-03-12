@@ -29,6 +29,14 @@ type Options struct {
 	Token       string
 }
 
+type Issue struct {
+	ClosedAt  time.Time
+	CreatedAt time.Time
+	EventsUrl string
+	IsClosed  bool
+	IsPr      bool
+}
+
 func withDefaultBaseUrl(baseUrl string) string {
 	if baseUrl == "" {
 		return "https://api.github.com"
@@ -49,7 +57,7 @@ func NewClient(options *Options) *Client {
 func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
 	rr, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("%s\n", err.Error())
 		return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 	}
 	rr.Header.Add("Authorization", fmt.Sprintf("token %s", gh.token))
@@ -58,7 +66,7 @@ func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (
 	resp, err := gh.httpClient.Do(rr)
 	logger.Printf("send GET %s %s\n", url, time.Since(startTime).String())
 	if err != nil {
-		logger.Fatal(err)
+		logger.Printf("ERROR: %s\n", err.Error())
 		return nil, &errors.HttpError{Message: "Github Upstream Error", Status: http.StatusBadGateway}
 	}
 	return resp, nil
@@ -75,13 +83,11 @@ func (gh *Client) paginateGithub(logger *log.Logger, path, mediaType string) ([]
 	for url := fmt.Sprintf("%s%s", gh.baseUrl, path); url != ""; {
 		resp, httpErr := gh.sendGithubRequest(logger, url, mediaType)
 		if httpErr != nil {
-			logger.Fatal(httpErr)
 			return nil, httpErr
 		}
 		defer resp.Body.Close()
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logger.Fatal(err)
 			return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 		}
 		json.Unmarshal(contents, &items)
@@ -184,8 +190,8 @@ func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[
 	)
 }
 
-func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
-	return gh.redisWrap(
+func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
+	rawIssues, err := gh.redisWrap(
 		fmt.Sprintf("github:repo:%s:%s:issues", owner, repo),
 		"issues",
 		logger,
@@ -200,7 +206,10 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]map[stri
 			}
 			for _, issue := range issues {
 				for key, _ := range issue {
-					if key != "closed_at" && key != "created_at" && key != "pull_request" {
+					if key != "closed_at" &&
+						key != "created_at" &&
+						key != "pull_request" &&
+						key != "events_url" {
 						delete(issue, key)
 					}
 				}
@@ -208,6 +217,45 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]map[stri
 			return issues, nil
 		},
 	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	issues := make([]Issue, len(rawIssues))
+	for i, rawIssue := range rawIssues {
+		createdAt, parseErr := time.Parse(time.RFC3339, rawIssue["created_at"].(string))
+		if parseErr != nil {
+			logger.Printf("ERROR: %s\n", parseErr.Error())
+			return nil, &errors.HttpError{
+				Message: "Server Error", Status: http.StatusInternalServerError,
+			}
+		}
+		issues[i].IsClosed = false
+		var rawClosedAt interface{}
+		var hasClosedAt bool
+		if rawClosedAt, hasClosedAt = rawIssue["closed_at"]; hasClosedAt {
+			issues[i].IsClosed = (rawClosedAt != nil)
+		}
+		if issues[i].IsClosed {
+			closedAt, parseErr := time.Parse(time.RFC3339, rawClosedAt.(string))
+			if parseErr != nil {
+				logger.Printf("ERROR: %s\n", parseErr.Error())
+				return nil, &errors.HttpError{
+					Message: "Server Error",
+					Status:  http.StatusInternalServerError,
+				}
+			}
+			issues[i].ClosedAt = closedAt
+		}
+		_, isPr := rawIssue["pull_request"]
+
+		issues[i].CreatedAt = createdAt
+		issues[i].EventsUrl = rawIssue["events_url"].(string)
+		issues[i].IsPr = isPr
+	}
+
+	return issues, nil
 }
 
 func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
@@ -233,7 +281,7 @@ func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit in
 				defer resp.Body.Close()
 				contents, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					logger.Fatal(err)
+					logger.Printf("ERROR: %s\n", err.Error())
 					return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 				}
 				json.Unmarshal(contents, &items)
@@ -289,7 +337,7 @@ func (gh *Client) ListTopPrs(logger *log.Logger, owner, repo string, limit int) 
 				defer resp.Body.Close()
 				contents, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
-					logger.Fatal(err)
+					logger.Printf("ERROR: %s\n", err.Error())
 					return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 				}
 				json.Unmarshal(contents, &items)

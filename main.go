@@ -61,12 +61,7 @@ func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Req
 			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
 			return
 		}
-		events, decodeErr := models.IssueEventsFromApi(allIssues)
-		if decodeErr != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
+		events := models.IssueEventsFromApi(allIssues)
 		jsonBlob, jsonErr := json.Marshal(simulate.OpenIssueAndPrCounts(events))
 		if jsonErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)

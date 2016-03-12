@@ -3,6 +3,8 @@ package models
 import (
 	"sort"
 	"time"
+
+	"github.com/ksheedlo/ghviz/github"
 )
 
 type StarEvent struct {
@@ -47,29 +49,24 @@ func StarEventsFromApi(apiObjects []map[string]interface{}) ([]StarEvent, error)
 	return starEvents, nil
 }
 
-func IssueEventsFromApi(apiObjects []map[string]interface{}) ([]IssueEvent, error) {
+func IssueEventsFromApi(issues []github.Issue) []IssueEvent {
 	var issueEvents []IssueEvent
-	for i := 0; i < len(apiObjects); i++ {
-		issueOpened := IssueEvent{EventType: IssueOpened}
-		_, issueOpened.IsPr = apiObjects[i]["pull_request"]
-		createdAt, err := time.Parse(time.RFC3339, apiObjects[i]["created_at"].(string))
-		if err != nil {
-			return nil, err
-		}
-		issueOpened.Timestamp = createdAt
-		issueEvents = append(issueEvents, issueOpened)
 
-		if closedAt := apiObjects[i]["closed_at"]; closedAt != nil {
-			issueClosed := IssueEvent{EventType: IssueClosed}
-			issueClosed.IsPr = issueOpened.IsPr
-			closedAt, err := time.Parse(time.RFC3339, closedAt.(string))
-			if err != nil {
-				return nil, err
-			}
-			issueClosed.Timestamp = closedAt
-			issueEvents = append(issueEvents, issueClosed)
+	for _, issue := range issues {
+		issueEvents = append(issueEvents, IssueEvent{
+			EventType: IssueOpened,
+			IsPr:      issue.IsPr,
+			Timestamp: issue.CreatedAt,
+		})
+
+		if issue.IsClosed {
+			issueEvents = append(issueEvents, IssueEvent{
+				EventType: IssueClosed,
+				IsPr:      issue.IsPr,
+				Timestamp: issue.ClosedAt,
+			})
 		}
 	}
 	sort.Sort(byTimestamp(issueEvents))
-	return issueEvents, nil
+	return issueEvents
 }

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
+	"github.com/ksheedlo/ghviz/github"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,19 +42,25 @@ func TestStarEventsFromApiError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-const issuesJson string = `[
-{"created_at":"2016-03-07T03:26:14.739Z"},
-{"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z"},
-{"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
- "pull_request":{}},
-{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{}}]`
-
 func TestIssueEventsFromApi(t *testing.T) {
 	t.Parallel()
-	issues := make([]map[string]interface{}, 4)
-	json.Unmarshal([]byte(issuesJson), &issues)
-	issueEvents, err := IssueEventsFromApi(issues)
-	assert.NoError(t, err)
+	issues := []github.Issue{
+		github.Issue{CreatedAt: time.Unix(3, 0), IsPr: false, IsClosed: false},
+		github.Issue{
+			CreatedAt: time.Unix(1, 0),
+			IsPr:      false,
+			IsClosed:  true,
+			ClosedAt:  time.Unix(2, 0),
+		},
+		github.Issue{
+			CreatedAt: time.Unix(4, 0),
+			IsPr:      true,
+			IsClosed:  true,
+			ClosedAt:  time.Unix(6, 0),
+		},
+		github.Issue{CreatedAt: time.Unix(5, 0), IsPr: true, IsClosed: false},
+	}
+	issueEvents := IssueEventsFromApi(issues)
 	assert.Len(t, issueEvents, 6)
 
 	for i := 0; (i + 1) < len(issueEvents); i++ {
@@ -74,25 +82,4 @@ func TestIssueEventsFromApi(t *testing.T) {
 	assert.True(t, issueEvents[4].IsPr, "Expected issueEvents[4] to be a PR")
 	assert.Equal(t, issueEvents[5].EventType, IssueClosed)
 	assert.True(t, issueEvents[5].IsPr, "Expected issueEvents[5] to be a PR")
-}
-
-const issuesBadCreatedJson string = `[{"created_at":"fish"}]`
-
-func TestIssueEventsFromApiBadCreatedAt(t *testing.T) {
-	t.Parallel()
-	issues := make([]map[string]interface{}, 4)
-	json.Unmarshal([]byte(issuesBadCreatedJson), &issues)
-	_, err := IssueEventsFromApi(issues)
-	assert.Error(t, err)
-}
-
-const issuesBadClosedJson string = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish"}]`
-
-func TestIssueEventsFromApiBadClosedAt(t *testing.T) {
-	t.Parallel()
-	issues := make([]map[string]interface{}, 4)
-	json.Unmarshal([]byte(issuesBadClosedJson), &issues)
-	_, err := IssueEventsFromApi(issues)
-	assert.Error(t, err)
 }
