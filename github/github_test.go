@@ -40,9 +40,8 @@ func TestListStargazers(t *testing.T) {
 	defer ts.Close()
 
 	gh := NewClient(&Options{
-		Username: "tester",
-		Password: "secretlel",
-		BaseUrl:  ts.URL,
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
 	})
 	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
@@ -67,9 +66,8 @@ func TestPagination(t *testing.T) {
 	nextPage = fmt.Sprintf("%s/repos/angular/angular/stargazers?per_page=100&page=2", ts.URL)
 
 	gh := NewClient(&Options{
-		Username: "tester",
-		Password: "secretlel",
-		BaseUrl:  ts.URL,
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
 	})
 	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
@@ -89,9 +87,8 @@ func TestListIssues(t *testing.T) {
 	defer ts.Close()
 
 	gh := NewClient(&Options{
-		Username: "tester",
-		Password: "secretlel",
-		BaseUrl:  ts.URL,
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
 	})
 	allStargazers, err := gh.ListStargazers(dummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)

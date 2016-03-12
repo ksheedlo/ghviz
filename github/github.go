@@ -19,16 +19,14 @@ var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"
 type Client struct {
 	baseUrl     string
 	httpClient  *http.Client
-	password    string
 	redisClient *redis.Client
-	username    string
+	token       string
 }
 
 type Options struct {
 	BaseUrl     string
-	Password    string
 	RedisClient *redis.Client
-	Username    string
+	Token       string
 }
 
 func withDefaultBaseUrl(baseUrl string) string {
@@ -43,9 +41,8 @@ func NewClient(options *Options) *Client {
 	client := &Client{}
 	client.httpClient = httpClient
 	client.baseUrl = withDefaultBaseUrl(options.BaseUrl)
-	client.password = options.Password
 	client.redisClient = options.RedisClient
-	client.username = options.Username
+	client.token = options.Token
 	return client
 }
 
@@ -55,7 +52,7 @@ func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (
 		logger.Fatal(err)
 		return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 	}
-	rr.SetBasicAuth(gh.username, gh.password)
+	rr.Header.Add("Authorization", fmt.Sprintf("token %s", gh.token))
 	rr.Header.Add("Accept", mediaType)
 	startTime := time.Now()
 	resp, err := gh.httpClient.Do(rr)
