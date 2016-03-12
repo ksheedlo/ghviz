@@ -6,6 +6,11 @@ if (!window.Promise) {
 }
 require('whatwg-fetch');
 
+const React = require('react');
+const ReactDOM = require('react-dom');
+const TopIssues = require('./components/TopIssues');
+const TopPrs = require('./components/TopPrs');
+
 const STAR_COUNT_SELECTOR = '.tile__star-count';
 const ISSUE_COUNT_SELECTOR = '.tile__issue-count';
 const PR_COUNT_SELECTOR = '.tile__pr-count';
@@ -263,72 +268,12 @@ issueCountsPromise.then((issueCounts) => {
   });
 });
 
-Promise.all([
-  issueCountsPromise,
+ReactDOM.render(
+  <TopIssues />,
+  document.querySelector('.holder__top-issues')
+);
 
-  fetch(`/gh/${owner}/${repo}/top_issues`).then((response) => {
-    return response.json();
-  })
-])
-.then(([issueCounts, topIssues]) => {
-  const topIssuesElt = document
-    .querySelector('.template__top-issues')
-    .cloneNode(true);
-
-  const issueRowElt = document.querySelector('.template__issue');
-
-  topIssuesElt.className = '';
-  topIssuesElt
-    .querySelector('.top-issues__header-text')
-    .appendChild(document.createTextNode(
-      `${issueCounts[issueCounts.length-1].open_issues} Open Issues`));
-
-  forEach(topIssues, (topIssue) => {
-    const issueRow = issueRowElt.cloneNode(true);
-    issueRow.className = 'top-issues__issue';
-    issueRow.setAttribute('href', topIssue.html_url);
-    issueRow
-      .querySelector('.top-issues__issue-title')
-      .appendChild(document.createTextNode(topIssue.title));
-    topIssuesElt.querySelector('.top-issues__list').appendChild(issueRow);
-  });
-
-  const topIssuesTile = document.querySelector('.tile__top-issues');
-  topIssuesTile.removeChild(topIssuesTile.querySelector('.loader__wrapper'));
-  topIssuesTile.appendChild(topIssuesElt);
-});
-
-Promise.all([
-  issueCountsPromise,
-
-  fetch(`/gh/${owner}/${repo}/top_prs`).then((response) => {
-    return response.json();
-  })
-])
-.then(([issueCounts, topPrs]) => {
-  const topPrsElt = document
-    .querySelector('.template__top-prs')
-    .cloneNode(true);
-
-  const prRowElt = document.querySelector('.template__pr');
-
-  topPrsElt.className = '';
-  topPrsElt
-    .querySelector('.top-issues__header-text')
-    .appendChild(document.createTextNode(
-      `${issueCounts[issueCounts.length-1].open_prs} Open PRs`));
-
-  forEach(topPrs, (topPr) => {
-    const prRow = prRowElt.cloneNode(true);
-    prRow.className = 'top-issues__issue';
-    prRow.setAttribute('href', topPr.html_url);
-    prRow
-      .querySelector('.top-issues__issue-title')
-      .appendChild(document.createTextNode(topPr.title));
-    topPrsElt.querySelector('.top-issues__list').appendChild(prRow);
-  });
-
-  const topPrsTile = document.querySelector('.tile__top-prs');
-  topPrsTile.removeChild(topPrsTile.querySelector('.loader__wrapper'));
-  topPrsTile.appendChild(topPrsElt);
-});
+ReactDOM.render(
+  <TopPrs />,
+  document.querySelector('.holder__top-prs')
+);
