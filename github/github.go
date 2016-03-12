@@ -34,6 +34,32 @@ type Issue struct {
 	EventsUrl string
 	IsClosed  bool
 	IsPr      bool
+	Number    int
+	Submitter string
+}
+
+type DetailedIssueEventType int
+
+const (
+	IssueCreated DetailedIssueEventType = iota
+	IssueClosed
+	IssueMerged
+	IssueLabeled
+	IssueUnlabeled
+)
+
+var issueEventTypes map[string]DetailedIssueEventType = map[string]DetailedIssueEventType{
+	"closed":    IssueClosed,
+	"merged":    IssueMerged,
+	"labeled":   IssueLabeled,
+	"unlabeled": IssueUnlabeled,
+}
+
+type DetailedIssueEvent struct {
+	ActorId   string
+	CreatedAt time.Time
+	Detail    interface{}
+	EventType DetailedIssueEventType
 }
 
 func withDefaultBaseUrl(baseUrl string) string {
@@ -75,11 +101,11 @@ func (gh *Client) sendGithubV3Request(logger *log.Logger, url string) (*http.Res
 	return gh.sendGithubRequest(logger, url, "application/vnd.github.v3+json")
 }
 
-func (gh *Client) paginateGithub(logger *log.Logger, path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) paginateGithub(logger *log.Logger, urll, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
-	for url := fmt.Sprintf("%s%s", gh.baseUrl, path); url != ""; {
+	for url := urll; url != ""; {
 		resp, httpErr := gh.sendGithubRequest(logger, url, mediaType)
 		if httpErr != nil {
 			return nil, httpErr
@@ -167,7 +193,7 @@ func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[
 		func() ([]map[string]interface{}, *errors.HttpError) {
 			stargazers, err := gh.paginateGithub(
 				logger,
-				fmt.Sprintf("/repos/%s/%s/stargazers?per_page=100", owner, repo),
+				fmt.Sprintf("%s/repos/%s/%s/stargazers?per_page=100", gh.baseUrl, owner, repo),
 				"application/vnd.github.v3.star+json",
 			)
 			if err != nil {
@@ -193,7 +219,7 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 		func() ([]map[string]interface{}, *errors.HttpError) {
 			issues, err := gh.paginateGithub(
 				logger,
-				fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
+				fmt.Sprintf("%s/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", gh.baseUrl, owner, repo),
 				"application/vnd.github.v3+json",
 			)
 			if err != nil {
@@ -203,9 +229,18 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 				for key, _ := range issue {
 					if key != "closed_at" &&
 						key != "created_at" &&
+						key != "events_url" &&
+						key != "number" &&
 						key != "pull_request" &&
-						key != "events_url" {
+						key != "user" {
 						delete(issue, key)
+					}
+				}
+
+				userJson := issue["user"].(map[string]interface{})
+				for key, _ := range userJson {
+					if key != "login" {
+						delete(userJson, key)
 					}
 				}
 			}
@@ -248,9 +283,53 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 		issues[i].CreatedAt = createdAt
 		issues[i].EventsUrl = rawIssue["events_url"].(string)
 		issues[i].IsPr = isPr
+		issues[i].Number = int(rawIssue["number"].(float64))
+		issues[i].Submitter = (rawIssue["user"].(map[string]interface{}))["login"].(string)
 	}
 
 	return issues, nil
+}
+
+func (gh *Client) ListIssueEvents(logger *log.Logger, issue *Issue) ([]DetailedIssueEvent, *errors.HttpError) {
+	issueEvents, err := gh.paginateGithub(logger, issue.EventsUrl, "application/vnd.github.v3+json")
+	if err != nil {
+		return nil, err
+	}
+
+	var detailedEvents []DetailedIssueEvent
+	detailedEvents = append(detailedEvents, DetailedIssueEvent{
+		ActorId:   issue.Submitter,
+		CreatedAt: issue.CreatedAt,
+		EventType: IssueCreated,
+	})
+	for _, event := range issueEvents {
+		if eventType, eventIsKnown := issueEventTypes[event["event"].(string)]; eventIsKnown {
+			actorId := (event["actor"].(map[string]interface{}))["login"].(string)
+			var detail interface{}
+			switch eventType {
+			case IssueClosed, IssueMerged:
+				detail = event["commit_id"]
+			case IssueLabeled, IssueUnlabeled:
+				detail = event["label"]
+			}
+			createdAt, err := time.Parse(time.RFC3339, event["created_at"].(string))
+			if err != nil {
+				logger.Printf("ERROR: %s\n", err)
+				return nil, &errors.HttpError{
+					Message: "Server Error",
+					Status:  http.StatusInternalServerError,
+				}
+			}
+			detailedEvents = append(detailedEvents, DetailedIssueEvent{
+				ActorId:   actorId,
+				CreatedAt: createdAt,
+				Detail:    detail,
+				EventType: eventType,
+			})
+		}
+	}
+
+	return detailedEvents, nil
 }
 
 func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
