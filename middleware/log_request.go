@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/context"
 )
 
-func LogRequest(handler Handler) Handler {
+func LogRequest(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 		handler(w, r)

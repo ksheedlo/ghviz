@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/context"
 )
 
-func AddLogger(handler Handler) Handler {
+func AddLogger(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		responseId := context.Get(r, CtxResponseId).(string)
 		logger := log.New(os.Stdout, responseId+" ", log.Ldate|log.Ltime|log.Lshortfile|log.LUTC)

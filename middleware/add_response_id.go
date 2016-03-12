@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/context"
 )
 
-func AddResponseId(handler Handler) Handler {
+func AddResponseId(handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		responseIdInt, err := rand.Int(rand.Reader, big.NewInt(1<<62))
 		if err != nil {
