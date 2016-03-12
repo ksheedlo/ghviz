@@ -47,6 +47,7 @@ func ListStarCounts(gh *github.Client) func(http.ResponseWriter, *http.Request) 
 			w.Write([]byte("Server Error\n"))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
 	}
 }
@@ -68,6 +69,7 @@ func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Req
 			w.Write([]byte("Server Error\n"))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
 	}
 }
@@ -76,6 +78,7 @@ var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.h
 
 func ServeIndex(params *IndexParams) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		IndexTpl.Execute(w, params)
 	}
 }
@@ -102,6 +105,7 @@ func TopIssues(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 			w.Write([]byte("Server Error\n"))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
 	}
 }
@@ -123,6 +127,7 @@ func TopPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 			w.Write([]byte("Server Error\n"))
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
 	}
 }
@@ -156,6 +161,7 @@ func main() {
 		middleware.AddResponseId,
 		middleware.AddLogger,
 		middleware.LogRequest,
+		middleware.Gzip,
 	)
 	r.HandleFunc("/", withMiddleware(ServeIndex(&IndexParams{
 		Owner: os.Getenv("GHVIZ_OWNER"),
