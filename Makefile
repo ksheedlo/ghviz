@@ -2,7 +2,7 @@
 all: js go
 
 dashboard/bundle.js: dashboard/index.js
-	browserify dashboard/index.js -o dashboard/bundle.js
+	cd dashboard; ./node_modules/.bin/browserify index.js -o bundle.js -t [ babelify --presets [ es2015 ] ]
 
 dashboard/bundle.min.js: dashboard/bundle.js
 	java -jar compiler.jar --js dashboard/bundle.js --js_output_file dashboard/bundle.min.js -O SIMPLE -W QUIET
