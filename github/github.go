@@ -153,11 +153,7 @@ func (gh *Client) redisWrap(
 		logger.Printf("JSON encoding error occurred: %s\n", jsonErr.Error())
 		return items, nil
 	}
-	duration, durationErr := time.ParseDuration("10m")
-	if durationErr != nil {
-		logger.Printf("Duration parsing error occurred: %s\n", durationErr.Error())
-		return items, nil
-	}
+	duration := (time.Duration(10) * time.Minute)
 	if redisErr := gh.redisClient.Set(cacheKey, jsonBlob, duration).Err(); redisErr != nil {
 		logger.Printf("Redis store error occurred: %s\n", redisErr.Error())
 	}
