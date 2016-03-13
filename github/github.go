@@ -9,9 +9,8 @@ import (
 	"regexp"
 	"time"
 
-	"gopkg.in/redis.v3"
-
 	"github.com/ksheedlo/ghviz/errors"
+	"github.com/ksheedlo/ghviz/interfaces"
 )
 
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
@@ -19,13 +18,13 @@ var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"
 type Client struct {
 	baseUrl     string
 	httpClient  *http.Client
-	redisClient *redis.Client
+	redisClient interfaces.Rediser
 	token       string
 }
 
 type Options struct {
 	BaseUrl     string
-	RedisClient *redis.Client
+	RedisClient interfaces.Rediser
 	Token       string
 }
 
@@ -117,7 +116,7 @@ func (gh *Client) redisWrap(
 	fallback func() ([]map[string]interface{}, *errors.HttpError),
 ) ([]map[string]interface{}, *errors.HttpError) {
 	if gh.redisClient != nil {
-		cachedItems, err := gh.redisClient.Get(cacheKey).Result()
+		cachedItems, err := gh.redisClient.Get(cacheKey)
 		if err != nil || cachedItems == "" {
 			logger.Printf(
 				"Key %s was not found in Redis, attempting to fetch %s from Github.\n",
@@ -154,7 +153,7 @@ func (gh *Client) redisWrap(
 		return items, nil
 	}
 	duration := (time.Duration(10) * time.Minute)
-	if redisErr := gh.redisClient.Set(cacheKey, jsonBlob, duration).Err(); redisErr != nil {
+	if redisErr := gh.redisClient.Set(cacheKey, string(jsonBlob), duration); redisErr != nil {
 		logger.Printf("Redis store error occurred: %s\n", redisErr.Error())
 	}
 	return items, nil

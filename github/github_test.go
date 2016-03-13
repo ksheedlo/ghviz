@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,4 +144,48 @@ func TestListIssuesBadClosedAt(t *testing.T) {
 	})
 	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
 	assert.Error(t, err)
+}
+
+func TestRedisCacheHit(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.FailNow(t, "Test should hit Redis and not call the API!")
+	}))
+	defer ts.Close()
+
+	redisMock := &interfaces.MockRediser{}
+	gh := NewClient(&Options{
+		BaseUrl:     ts.URL,
+		RedisClient: redisMock,
+		Token:       "deadbeef",
+	})
+
+	redisMock.On("Get", "github:repo:lodash:lodash:issues").Return(issuesJson, nil)
+
+	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	assert.Equal(t, len(allIssues), 4)
+	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
+	redisMock.AssertExpectations(t)
+}
+
+func TestRedisCacheSet(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesJson)
+	}))
+	defer ts.Close()
+
+	redisMock := &interfaces.MockRediser{}
+	gh := NewClient(&Options{
+		BaseUrl:     ts.URL,
+		RedisClient: redisMock,
+		Token:       "deadbeef",
+	})
+
+	cacheKey := "github:repo:lodash:lodash:issues"
+	redisMock.On("Get", cacheKey).Return("", nil)
+	redisMock.On("Set", cacheKey, "", time.Duration(10)*time.Minute).Return(nil)
+
+	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	redisMock.AssertExpectations(t)
 }

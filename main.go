@@ -15,6 +15,7 @@ import (
 	"gopkg.in/redis.v3"
 
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/middleware"
 	"github.com/ksheedlo/ghviz/models"
 	"github.com/ksheedlo/ghviz/simulate"
@@ -143,14 +144,14 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	r := mux.NewRouter()
 
-	var redisClient *redis.Client
+	var redisClient interfaces.Rediser
 	if redisHost := os.Getenv("GHVIZ_REDIS_HOST"); redisHost != "" {
 		redisPort := withDefaultStr(os.Getenv("GHVIZ_REDIS_PORT"), "6379")
-		redisClient = redis.NewClient(&redis.Options{
+		redisClient = interfaces.NewGoRedis(redis.NewClient(&redis.Options{
 			Addr:     fmt.Sprintf("%s:%s", redisHost, redisPort),
 			Password: os.Getenv("GHVIZ_REDIS_PASSWORD"),
 			DB:       0,
-		})
+		}))
 	}
 
 	gh := github.NewClient(&github.Options{
