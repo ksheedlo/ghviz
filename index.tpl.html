@@ -26,7 +26,7 @@
             </div>
           </div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-sm-4 holder__issue-count">
           <div class="tile tile__issue-count">
             <div class="loader__wrapper">
               <div class="loader"></div>
@@ -42,7 +42,7 @@
         </div>
       </div>
       <div class="row">
-        <div class="col-sm-4">
+        <div class="col-sm-4 holder__star-chart">
           <div class="tile tile__star-chart">
             <div class="loader__wrapper">
               <div class="loader"></div>
@@ -56,7 +56,7 @@
             </div>
           </div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-sm-4 holder__pr-count">
           <div class="tile tile__pr-count">
             <div class="loader__wrapper">
               <div class="loader"></div>
@@ -65,35 +65,6 @@
         </div>
       </div>
     </div>
-    <div class="template template__star-headline">
-      <p class="star-headline__text text-center">
-        <span class="star-headline__count"></span>
-        <span class="star-headline__star octicon octicon-star"></span>
-      </p>
-      <p class="star-headline__caption text-center"></p>
-    </div>
-    <div class="template template__top-issues">
-      <p class="top-issues__header text-center">
-        <span class="top-issues__header-icon octicon octicon-issue-opened"></span>
-        <span class="top-issues__header-text"></span>
-        <div class="top-issues__list"></div>
-      </p>
-    </div>
-    <a class="template template__issue" href target="_blank">
-      <span class="top-issues__icon octicon octicon-issue-opened"></span>
-      <span class="top-issues__issue-title"></span>
-    </a>
-    <div class="template template__top-prs">
-      <p class="top-issues__header text-center">
-        <span class="top-issues__header-icon octicon octicon-git-pull-request"></span>
-        <span class="top-issues__header-text"></span>
-        <div class="top-issues__list"></div>
-      </p>
-    </div>
-    <a class="template template__pr" href target="_blank">
-      <span class="top-issues__icon octicon octicon-git-pull-request"></span>
-      <span class="top-issues__issue-title"></span>
-    </a>
     <script type="text/javascript">
       window.GLOBALS = {
         owner: "{{.Owner}}",

@@ -10,7 +10,7 @@ class Cache {
     if (!this._cache[key]) {
       return (void 0);
     }
-    if (Date.now() < this._cache[key].expires) {
+    if (this._cache[key].expires < Date.now()) {
       delete this._cache[key];
       return (void 0);
     }

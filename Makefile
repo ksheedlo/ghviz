@@ -1,7 +1,7 @@
 .PHONY: all clean test
 all: js go
 
-dashboard/bundle.js: dashboard/index.js dashboard/cache.js dashboard/ops.js dashboard/components/*.js
+dashboard/bundle.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
 	cd dashboard; NODE_ENV=production ./node_modules/.bin/browserify index.js -o bundle.js -t [ babelify --presets [ es2015 react ] ]
 
 dashboard/bundle.min.js: dashboard/bundle.js
