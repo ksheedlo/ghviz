@@ -8,10 +8,13 @@ require('whatwg-fetch');
 
 const React = require('react');
 const ReactDOM = require('react-dom');
+const StarCount = require('./components/StarCount');
 const TopIssues = require('./components/TopIssues');
 const TopPrs = require('./components/TopPrs');
 
-const STAR_COUNT_SELECTOR = '.tile__star-count';
+const { listIssueCounts, listStarCounts } = require('./ops');
+
+const STAR_CHART_SELECTOR = '.tile__star-chart';
 const ISSUE_COUNT_SELECTOR = '.tile__issue-count';
 const PR_COUNT_SELECTOR = '.tile__pr-count';
 
@@ -30,46 +33,21 @@ const d3 = require('d3'),
 const owner = window.GLOBALS.owner,
   repo = window.GLOBALS.repo;
 
-function starCaption(stars) {
-  if (stars < 10) {
-    return 'Imagine the possibilities!';
-  }
-  if (stars < 100) {
-    return 'This is starting to pick up steam!';
-  }
-  if (stars < 1000) {
-    return 'It\'ll take over the world someday.';
-  }
-  if (stars < 9001) {
-    return 'Look at all the Internet points!';
-  }
-  if (stars < 10000) {
-    return 'IT\'S OVER NINE THOUSAND!';
-  }
-  if (stars < 100000) {
-    return 'Literally bigger than jQuery.';
-  }
-  return 'World Domination';
-}
-
-fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
-  return resp.json();
-})
-.then((starCounts) => {
+listStarCounts({ owner, repo }).then((starCounts) => {
   const formattedCounts = map(starCounts, (starCount) => {
     return { stars: starCount.stars,
              timestamp: d3.time.format.iso.parse(starCount.timestamp) };
   });
 
-  const starCountQsel = document.querySelector('.tile__star-count');
-  starCountQsel.removeChild(starCountQsel.querySelector('.loader__wrapper'));
+  const starChartQsel = document.querySelector('.tile__star-chart');
+  starChartQsel.removeChild(starChartQsel.querySelector('.loader__wrapper'));
 
-  const starCountEl = $(STAR_COUNT_SELECTOR);
+  const starChartEl = $(STAR_CHART_SELECTOR);
 
   const height =
-    starCountEl.height() - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
+    starChartEl.height() - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
   const width =
-    starCountEl.width() - (LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right);
+    starChartEl.width() - (LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right);
 
   const t = d3.time.scale()
     .range([0, width]);
@@ -90,7 +68,7 @@ fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
     .y((d) => { return y(d.stars); });
 
   const svg = d3
-    .select(STAR_COUNT_SELECTOR)
+    .select(STAR_CHART_SELECTOR)
     .append('svg')
       .attr('class', 'chart__svg')
       .attr('width', width + LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right)
@@ -137,20 +115,6 @@ fetch(`/gh/${owner}/${repo}/star_counts`).then((resp) => {
       .duration(1000)
       .ease("linear")
       .attr("stroke-dashoffset", 0);
-
-  const starHeadlineTile = document.querySelector('.tile__star-headline');
-  starHeadlineTile.removeChild(starHeadlineTile.querySelector('.loader__wrapper'));
-  const starHeadlineTpl = document.querySelector('.template__star-headline');
-  const starHeadline = starHeadlineTpl.cloneNode(true);
-  starHeadline
-    .querySelector('.star-headline__count')
-    .appendChild(document.createTextNode(starCounts[starCounts.length-1].stars));
-  starHeadline
-    .querySelector('.star-headline__caption')
-    .appendChild(document.createTextNode(starCaption(
-      starCounts[starCounts.length-1].stars)));
-  starHeadline.className = '';
-  starHeadlineTile.appendChild(starHeadline);
 });
 
 function drawIssues({ chartLineColor,
@@ -237,12 +201,7 @@ function drawIssues({ chartLineColor,
       .attr("stroke-dashoffset", 0);
 }
 
-const issueCountsPromise = fetch(`/gh/${owner}/${repo}/issue_counts`).then(
-  (response) => {
-  return response.json();
-});
-
-issueCountsPromise.then((issueCounts) => {
+listIssueCounts({ owner, repo }).then((issueCounts) => {
   const formattedCounts = map(issueCounts, (issueCount) => {
     return { openIssues: issueCount.open_issues,
              openPrs: issueCount.open_prs,
@@ -267,6 +226,11 @@ issueCountsPromise.then((issueCounts) => {
     yLabel: 'Open PRs'
   });
 });
+
+ReactDOM.render(
+  <StarCount />,
+  document.querySelector('.holder__star-count')
+);
 
 ReactDOM.render(
   <TopIssues />,

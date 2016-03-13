@@ -4,6 +4,8 @@ const React = require('react');
 const { Component } = React;
 const map = require('lodash.map');
 
+const { listIssueCounts, listTopPrs } = require('../ops');
+
 class TopPrs extends React.Component {
   constructor(props) {
     super(props);
@@ -17,13 +19,8 @@ class TopPrs extends React.Component {
       repo = window.GLOBALS.repo;
 
     Promise.all([
-      fetch(`/gh/${owner}/${repo}/issue_counts`).then((response) => {
-        return response.json();
-      }),
-
-      fetch(`/gh/${owner}/${repo}/top_prs`).then((response) => {
-        return response.json();
-      })
+      listIssueCounts({ owner, repo }),
+      listTopPrs({ owner, repo })
     ])
     .then(([issueCounts, topPrs]) => {
       this.setState({ status: 'active',

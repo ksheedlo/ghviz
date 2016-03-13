@@ -10,11 +10,12 @@ body {
   margin-top: 30px;
 }
 
-.star-headline__text {
+.star-count__text {
   font-size: 120px;
+  padding-top: 100px;
 }
 
-.star-headline__star {
+.star-count__star {
   font-size: 128px;
 }
 
@@ -51,10 +52,6 @@ body {
 
 .chart__line--blue {
   stroke: #1B3FE6;
-}
-
-.star-headline__text {
-  padding-top: 100px;
 }
 
 .top-issues__header {
