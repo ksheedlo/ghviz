@@ -17,24 +17,24 @@
         </div>
       </div>
     </nav>
-    <div class="container-fluid">
+    <div class="container-fluid" id="react-dashboard">
       <div class="row">
-        <div class="col-sm-4 holder__star-count">
-          <div class="tile tile__star-count">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
           </div>
         </div>
-        <div class="col-sm-4 holder__issue-count">
-          <div class="tile tile__issue-count">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
           </div>
         </div>
-        <div class="col-sm-4 holder__top-prs">
-          <div class="tile tile__top-prs">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
@@ -42,22 +42,22 @@
         </div>
       </div>
       <div class="row">
-        <div class="col-sm-4 holder__star-chart">
-          <div class="tile tile__star-chart">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
           </div>
         </div>
-        <div class="col-sm-4 holder__top-issues">
-          <div class="tile tile__top-issues">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
           </div>
         </div>
-        <div class="col-sm-4 holder__pr-count">
-          <div class="tile tile__pr-count">
+        <div class="col-sm-4">
+          <div class="tile">
             <div class="loader__wrapper">
               <div class="loader"></div>
             </div>
@@ -71,6 +71,6 @@
         repo: "{{.Repo}}"
       };
     </script>
-    <script type="text/javascript" src="/dashboard/bundle.js"></script>
+    <script type="text/javascript" src="/dashboard/bundle.min.js"></script>
   </body>
 </html>

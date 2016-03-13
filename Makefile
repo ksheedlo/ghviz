@@ -2,7 +2,7 @@
 all: js go
 
 dashboard/bundle.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
-	cd dashboard; NODE_ENV=production ./node_modules/.bin/browserify index.js -o bundle.js -t [ babelify --presets [ es2015 react ] ]
+	cd dashboard; NODE_ENV=production ./node_modules/.bin/browserify index.js -o bundle.js -t [ babelify --presets [ es2015 react stage-2 ] ]
 
 dashboard/bundle.min.js: dashboard/bundle.js
 	java -jar compiler.jar --js dashboard/bundle.js --js_output_file dashboard/bundle.min.js -O SIMPLE -W QUIET

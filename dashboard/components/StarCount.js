@@ -3,8 +3,6 @@
 const React = require('react');
 const { Component } = React;
 
-const { listStarCounts } = require('../ops');
-
 function starCaption(stars) {
   if (stars < 10) {
     return 'Imagine the possibilities!';
@@ -30,40 +28,16 @@ function starCaption(stars) {
 class StarCount extends Component {
   constructor(props) {
     super(props);
-    this.state = { status: 'loading', stars: 0, caption: '' };
-  }
-
-  componentWillMount() {
-    const owner = window.GLOBALS.owner,
-      repo = window.GLOBALS.repo;
-
-    listStarCounts({ owner, repo }).then((starCounts) => {
-      const stars = starCounts[starCounts.length-1].stars
-
-      this.setState({ stars,
-                      
-                      caption: starCaption(stars),
-                      status: 'active' });
-    });
   }
 
   render() {
-    if (this.state.status === 'loading') {
-      return (
-        <div className="tile tile__star-count">
-          <div className="loader__wrapper">
-            <div className="loader"></div>
-          </div>
-        </div>
-      )
-    }
     return (
-      <div className="tile tile__star-count">
+      <div>
         <p className="star-count__text text-center">
-          <span className="star-count__count">{this.state.stars} </span>
+          <span className="star-count__count">{this.props.count} </span>
           <span className="star-count__star octicon octicon-star"></span>
         </p>
-        <p className="star-count__caption text-center">{this.state.caption}</p>
+        <p className="star-count__caption text-center">{starCaption(this.props.count)}</p>
       </div>
     );
   }
