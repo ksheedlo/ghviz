@@ -77,19 +77,40 @@ func TestPagination(t *testing.T) {
 	assert.Equal(t, len(allStargazers), 6)
 }
 
-const issuesJson string = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":null,
- "events_url":"https://api.example.com/issues/1/events",
- "html_url":"https://api.example.com/issues/1","title":"Test 1"},
-{"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z",
- "events_url":"https://api.example.com/issues/2/events",
- "html_url":"https://api.example.com/issues/2","title":"Test 2"},
-{"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
- "pull_request":{},"events_url":"https://api.example.com/issues/3/events",
- "html_url":"https://api.example.com/pull/3","title":"Test 3"},
-{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},"title":"Test 4",
- "events_url":"https://api.example.com/issues/4/events",
- "html_url":"https://api.example.com/pull/4"}]`
+const issuesJson string = `[{
+	"created_at":"2016-03-07T03:26:14.739Z",
+	"closed_at":null,
+  "events_url":"https://api.example.com/issues/1/events",
+  "html_url":"https://api.example.com/issues/1",
+	"number":1,
+	"title":"Test 1",
+	"user":{"login":"tester1"}
+}, {
+	"created_at":"2016-03-07T03:23:53.002Z",
+	"closed_at":"2016-03-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/2/events",
+  "html_url":"https://api.example.com/issues/2",
+	"number":2,
+	"title":"Test 2",
+	"user":{"login":"tester1"}
+}, {
+	"created_at":"2016-03-07T03:46:36.717Z",
+	"closed_at":"2016-03-07T03:46:55.993Z",
+	"events_url":"https://api.example.com/issues/3/events",
+  "html_url":"https://api.example.com/pull/3",
+	"number":3,
+  "pull_request":{},
+	"title":"Test 3",
+	"user":{"login":"tester1"}
+}, {
+	"created_at":"2016-03-07T03:46:46.458Z",
+  "events_url":"https://api.example.com/issues/4/events",
+  "html_url":"https://api.example.com/pull/4",
+	"number":4,
+	"pull_request":{},
+	"title":"Test 4",
+	"user":{"login":"tester1"}
+}]`
 
 func TestListIssues(t *testing.T) {
 	t.Parallel()
@@ -116,9 +137,14 @@ func TestListIssues(t *testing.T) {
 	assert.True(t, allIssues[2].IsPr)
 }
 
-const issuesBadCreatedAtJson = `[
-{"created_at":"fish","events_url":"https://api.example.com/issues/1/events",
- "html_url":"https://api.example.com/issues/1","title":"Test 1"}]`
+const issuesBadCreatedAtJson = `[{
+	"created_at":"fish",
+	"events_url":"https://api.example.com/issues/1/events",
+  "html_url":"https://api.example.com/issues/1",
+	"number":1,
+	"title":"Test 1",
+	"user":{"login":"tester1"}
+}]`
 
 func TestListIssuesBadCreatedAt(t *testing.T) {
 	t.Parallel()
@@ -136,10 +162,15 @@ func TestListIssuesBadCreatedAt(t *testing.T) {
 	assert.Error(t, err)
 }
 
-const issuesBadClosedAtJson = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish","title":"Test 1",
- "events_url":"https://api.example.com/issues/1/events",
- "html_url":"https://api.example.com/issues/1"}]`
+const issuesBadClosedAtJson = `[{
+	"created_at":"2016-03-07T03:26:14.739Z",
+	"closed_at":"fish","title":"Test 1",
+  "events_url":"https://api.example.com/issues/1/events",
+  "html_url":"https://api.example.com/issues/1",
+	"number":1,
+	"title":"Test 1",
+	"user":{"login":"tester1"}
+}]`
 
 func TestListIssuesBadClosedAt(t *testing.T) {
 	t.Parallel()
@@ -210,32 +241,42 @@ const topIssuesJsonPage1 string = `[{
 	"closed_at":null,
   "events_url":"https://api.example.com/issues/1/events",
   "html_url":"https://api.example.com/issues/1",
-  "title":"Test 1"
+	"number":1,
+  "title":"Test 1",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-03-07T03:23:53.002Z",
 	"closed_at":"2016-03-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/2/events",
   "html_url":"https://api.example.com/issues/2",
-	"title":"Test 2"
+	"number":2,
+	"title":"Test 2",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-03-07T03:46:36.717Z",
 	"closed_at":"2016-03-07T03:46:55.993Z",
   "pull_request":{},
 	"events_url":"https://api.example.com/issues/3/events",
   "html_url":"https://api.example.com/pull/3",
-  "title":"Test 3"
+	"number":3,
+  "title":"Test 3",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-03-07T03:46:46.458Z",
+  "events_url":"https://api.example.com/issues/4/events",
+  "html_url":"https://api.example.com/pull/4",
+	"number":4,
 	"pull_request":{},
 	"title":"Test 4",
-  "events_url":"https://api.example.com/issues/4/events",
-  "html_url":"https://api.example.com/pull/4"
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2017-03-07T03:23:53.002Z",
 	"closed_at":null,
   "events_url":"https://api.example.com/issues/5/events",
   "html_url":"https://api.example.com/issues/5",
-	"title":"Test 5"
+	"number":5,
+	"title":"Test 5",
+	"user":{"login":"tester1"}
 }]`
 
 const topIssuesJsonPage2 string = `[{
@@ -243,19 +284,25 @@ const topIssuesJsonPage2 string = `[{
 	"closed_at":null,
   "events_url":"https://api.example.com/issues/6/events",
   "html_url":"https://api.example.com/issues/6",
-  "title":"Test 6"
+	"number":6,
+  "title":"Test 6",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-06-07T03:23:53.002Z",
 	"closed_at":"2016-06-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/7/events",
   "html_url":"https://api.example.com/issues/7",
-	"title":"Test 7"
+	"number":7,
+	"title":"Test 7",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-07-07T03:23:53.002Z",
 	"closed_at":"2016-07-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/8/events",
   "html_url":"https://api.example.com/issues/8",
-	"title":"Test 8"
+	"number":8,
+	"title":"Test 8",
+	"user":{"login":"tester1"}
 }]`
 
 func TestTopIssues(t *testing.T) {
@@ -296,29 +343,37 @@ const topPrsJsonPage2 string = `[{
 	"closed_at":null,
   "events_url":"https://api.example.com/issues/6/events",
   "html_url":"https://api.example.com/issues/6",
+	"number":6,
 	"pull_request":{},
-  "title":"PR 6"
+  "title":"PR 6",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-06-07T03:23:53.002Z",
 	"closed_at":"2016-06-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/7/events",
   "html_url":"https://api.example.com/issues/7",
+	"number":7,
 	"pull_request":{},
-	"title":"PR 7"
+	"title":"PR 7",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-07-07T03:23:53.002Z",
 	"closed_at":"2016-07-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/8/events",
   "html_url":"https://api.example.com/issues/8",
+	"number":8,
 	"pull_request":{},
-	"title":"PR 8"
+	"title":"PR 8",
+	"user":{"login":"tester1"}
 }, {
 	"created_at":"2016-08-07T03:23:53.002Z",
 	"closed_at":"2016-08-07T03:25:41.469Z",
   "events_url":"https://api.example.com/issues/8/events",
   "html_url":"https://api.example.com/issues/8",
+	"number":9,
 	"pull_request":{},
-	"title":"PR 9"
+	"title":"PR 9",
+	"user":{"login":"tester1"}
 }]`
 
 func TestTopPrs(t *testing.T) {

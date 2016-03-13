@@ -12,7 +12,10 @@ js: dashboard/bundle.min.js
 ghviz: main.go errors/*.go github/*.go interfaces/*.go middleware/*.go models/*.go simulate/*.go
 	go build
 
-go: ghviz
+highscores/highscores: highscores/main.go github/*.go simulate/*.go
+	cd highscores; go build
+
+go: ghviz highscores/highscores
 
 clean:
 	rm ghviz dashboard/bundle.js dashboard/bundle.min.js
