@@ -78,14 +78,16 @@ func TestPagination(t *testing.T) {
 }
 
 const issuesJson string = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":null,
- "events_url":"https://api.example.com/issues/1/events"},
+{"created_at":"2016-03-07T03:26:14.739Z","closed_at":null,"number":1,
+"events_url":"https://api.example.com/issues/1/events","user":{"login":"tester"}},
 {"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z",
- "events_url":"https://api.example.com/issues/2/events"},
+ "events_url":"https://api.example.com/issues/2/events","number":2,
+ "user":{"login":"tester"}},
 {"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
- "pull_request":{},"events_url":"https://api.example.com/issues/3/events"},
-{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},
- "events_url":"https://api.example.com/issues/4/events"}]`
+ "pull_request":{},"events_url":"https://api.example.com/issues/3/events",
+ "number":3,"user":{"login":"tester"}},
+ {"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},"number":4,
+ "events_url":"https://api.example.com/issues/4/events","user":{"login":"tester"}}]`
 
 func TestListIssues(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +113,8 @@ func TestListIssues(t *testing.T) {
 }
 
 const issuesBadCreatedAtJson = `[
-{"created_at":"fish","events_url":"https://api.example.com/issues/1/events"}]`
+{"created_at":"fish","events_url":"https://api.example.com/issues/1/events",
+ "number":1,"user":{"login":"tester"}}]`
 
 func TestListIssuesBadCreatedAt(t *testing.T) {
 	t.SkipNow()
@@ -129,8 +132,8 @@ func TestListIssuesBadCreatedAt(t *testing.T) {
 }
 
 const issuesBadClosedAtJson = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish",
- "events_url":"https://api.example.com/issues/1/events"}]`
+{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish","number":1,
+ "events_url":"https://api.example.com/issues/1/events","user":{"login":"tester"}}]`
 
 func TestListIssuesBadClosedAt(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
