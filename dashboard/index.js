@@ -6,6 +6,7 @@ if (!window.Promise) {
 }
 require('whatwg-fetch');
 
+/* eslint no-unused-vars: [2, { "varsIgnorePattern": "React" }] */
 const React = require('react');
 const ReactDOM = require('react-dom');
 const Dashboard = require('./components/Dashboard');

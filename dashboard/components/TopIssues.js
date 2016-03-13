@@ -1,10 +1,10 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 const map = require('lodash.map');
 
-class TopIssues extends React.Component {
+class TopIssues extends Component {
   constructor(props) {
     super(props);
   }
@@ -27,8 +27,13 @@ class TopIssues extends React.Component {
           })}
         </div>
       </div>
-    )
+    );
   }
 }
+
+TopIssues.propTypes = {
+  issues: PropTypes.array.isRequired,
+  openIssues: PropTypes.number.isRequired
+};
 
 module.exports = TopIssues;

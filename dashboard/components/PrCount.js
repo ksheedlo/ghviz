@@ -1,7 +1,7 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 
 const d3 = require('d3'),
   map = require('lodash.map');
@@ -52,5 +52,10 @@ class PrCount extends Component {
     );
   }
 }
+
+PrCount.propTypes = {
+  owner: PropTypes.string.isRequired,
+  repo: PropTypes.string.isRequired
+};
 
 module.exports = PrCount;

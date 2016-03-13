@@ -1,7 +1,7 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 
 function starCaption(stars) {
   if (stars < 10) {
@@ -42,5 +42,9 @@ class StarCount extends Component {
     );
   }
 }
+
+StarCount.propTypes = {
+  count: PropTypes.number.isRequired
+};
 
 module.exports = StarCount;

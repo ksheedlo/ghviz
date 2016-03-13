@@ -1,7 +1,7 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 
 const IssueCount = require('./IssueCount');
 const PrCount = require('./PrCount');
@@ -129,5 +129,10 @@ class Dashboard extends Component {
     );
   }
 }
+
+Dashboard.propTypes = {
+  owner: PropTypes.string.isRequired,
+  repo: PropTypes.string.isRequired
+};
 
 module.exports = Dashboard;

@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint cache.js helpers.js index.js ops.js components/*.js"
   },
   "author": "Ken Sheedlo <ovrkenthousand@gmail.com>",
   "license": "MIT",
@@ -24,6 +24,8 @@
     "babel-preset-react": "6.5.0",
     "babel-preset-stage-2": "6.5.0",
     "babelify": "7.2.0",
-    "browserify": "13.0.0"
+    "browserify": "13.0.0",
+    "eslint": "2.4.0",
+    "eslint-plugin-react": "4.2.1"
   }
 }

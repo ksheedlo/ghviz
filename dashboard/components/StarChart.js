@@ -1,7 +1,7 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 
 const d3 = require('d3'),
   map = require('lodash.map'),
@@ -101,12 +101,12 @@ class StarChart extends Component {
       const totalLength = path.node().getTotalLength();
 
       path
-        .attr("stroke-dasharray", totalLength + " " + totalLength)
-        .attr("stroke-dashoffset", totalLength)
+        .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+        .attr('stroke-dashoffset', totalLength)
         .transition()
           .duration(1000)
-          .ease("linear")
-          .attr("stroke-dashoffset", 0);
+          .ease('linear')
+          .attr('stroke-dashoffset', 0);
     });
   }
 
@@ -124,5 +124,10 @@ class StarChart extends Component {
     );
   }
 }
+
+StarChart.propTypes = {
+  owner: PropTypes.string.isRequired,
+  repo: PropTypes.string.isRequired
+};
 
 module.exports = StarChart;

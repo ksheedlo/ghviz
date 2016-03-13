@@ -1,10 +1,10 @@
 'use strict';
 
 const React = require('react');
-const { Component } = React;
+const { Component, PropTypes } = React;
 const map = require('lodash.map');
 
-class TopPrs extends React.Component {
+class TopPrs extends Component {
   constructor(props) {
     super(props);
   }
@@ -27,8 +27,13 @@ class TopPrs extends React.Component {
           })}
         </div>
       </div>
-    )
+    );
   }
 }
+
+TopPrs.propTypes = {
+  openPrs: PropTypes.number.isRequired,
+  prs: PropTypes.array.isRequired
+};
 
 module.exports = TopPrs;

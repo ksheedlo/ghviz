@@ -86,10 +86,10 @@ exports.drawIssues = function drawIssues({ chartLineColor,
   const totalLength = path.node().getTotalLength();
 
   path
-    .attr("stroke-dasharray", totalLength + " " + totalLength)
-    .attr("stroke-dashoffset", totalLength)
+    .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+    .attr('stroke-dashoffset', totalLength)
     .transition()
       .duration(1000)
-      .ease("linear")
-      .attr("stroke-dashoffset", 0);
+      .ease('linear')
+      .attr('stroke-dashoffset', 0);
 };

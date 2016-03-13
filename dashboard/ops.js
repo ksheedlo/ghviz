@@ -11,10 +11,8 @@ exports.listStarCounts = function listStarCounts({ owner, repo }) {
   if (promiseForStarCounts) {
     return promiseForStarCounts;
   }
-  promiseForStarCounts = fetch(`/gh/${owner}/${repo}/star_counts`).then(
-    (response) => {
-    return response.json();
-  });
+  promiseForStarCounts = fetch(`/gh/${owner}/${repo}/star_counts`)
+    .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForStarCounts);
   return promiseForStarCounts;
 };
@@ -26,10 +24,8 @@ exports.listIssueCounts = function listStarCounts({ owner, repo }) {
   if (promiseForIssueCounts) {
     return promiseForIssueCounts;
   }
-  promiseForIssueCounts = fetch(`/gh/${owner}/${repo}/issue_counts`).then(
-    (response) => {
-    return response.json();
-  });
+  promiseForIssueCounts = fetch(`/gh/${owner}/${repo}/issue_counts`)
+    .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForIssueCounts);
   return promiseForIssueCounts;
 };
@@ -41,10 +37,8 @@ exports.listTopIssues = function listTopIssues({ owner, repo }) {
   if (promiseForTopIssues) {
     return promiseForTopIssues;
   }
-  promiseForTopIssues = fetch(`/gh/${owner}/${repo}/top_issues`).then(
-    (response) => {
-    return response.json();
-  });
+  promiseForTopIssues = fetch(`/gh/${owner}/${repo}/top_issues`)
+    .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForTopIssues);
   return promiseForTopIssues;
 };
@@ -56,9 +50,8 @@ exports.listTopPrs = function listTopPrs({ owner, repo }) {
   if (promiseForTopPrs) {
     return promiseForTopPrs;
   }
-  promiseForTopPrs = fetch(`/gh/${owner}/${repo}/top_prs`).then((response) => {
-    return response.json();
-  });
+  promiseForTopPrs = fetch(`/gh/${owner}/${repo}/top_prs`)
+    .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForTopPrs);
   return promiseForTopPrs;
 };
