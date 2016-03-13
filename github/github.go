@@ -32,8 +32,22 @@ type Issue struct {
 	ClosedAt  time.Time
 	CreatedAt time.Time
 	EventsUrl string
+	HtmlUrl   string
 	IsClosed  bool
 	IsPr      bool
+	Title     string
+}
+
+func (issue *Issue) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"closed_at":  issue.ClosedAt,
+		"created_at": issue.CreatedAt,
+		"events_url": issue.EventsUrl,
+		"html_url":   issue.HtmlUrl,
+		"is_closed":  issue.IsClosed,
+		"is_pr":      issue.IsPr,
+		"title":      issue.Title,
+	})
 }
 
 func withDefaultBaseUrl(baseUrl string) string {
@@ -75,7 +89,10 @@ func (gh *Client) sendGithubV3Request(logger *log.Logger, url string) (*http.Res
 	return gh.sendGithubRequest(logger, url, "application/vnd.github.v3+json")
 }
 
-func (gh *Client) paginateGithub(logger *log.Logger, path, mediaType string) ([]map[string]interface{}, *errors.HttpError) {
+func (gh *Client) paginateGithub(
+	logger *log.Logger,
+	path, mediaType string,
+) ([]map[string]interface{}, *errors.HttpError) {
 	items := make([]map[string]interface{}, 0)
 	allItems := make([]map[string]interface{}, 0)
 
@@ -185,38 +202,22 @@ func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[
 	)
 }
 
-func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
-	rawIssues, err := gh.redisWrap(
-		fmt.Sprintf("github:repo:%s:%s:issues", owner, repo),
-		"issues",
-		logger,
-		func() ([]map[string]interface{}, *errors.HttpError) {
-			issues, err := gh.paginateGithub(
-				logger,
-				fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
-				"application/vnd.github.v3+json",
-			)
-			if err != nil {
-				return nil, err
+func cleanIssueJsons(issues []map[string]interface{}) {
+	for _, issue := range issues {
+		for key, _ := range issue {
+			if key != "closed_at" &&
+				key != "created_at" &&
+				key != "events_url" &&
+				key != "html_url" &&
+				key != "pull_request" &&
+				key != "title" {
+				delete(issue, key)
 			}
-			for _, issue := range issues {
-				for key, _ := range issue {
-					if key != "closed_at" &&
-						key != "created_at" &&
-						key != "pull_request" &&
-						key != "events_url" {
-						delete(issue, key)
-					}
-				}
-			}
-			return issues, nil
-		},
-	)
-
-	if err != nil {
-		return nil, err
+		}
 	}
+}
 
+func parseIssues(logger *log.Logger, rawIssues []map[string]interface{}) ([]Issue, *errors.HttpError) {
 	issues := make([]Issue, len(rawIssues))
 	for i, rawIssue := range rawIssues {
 		createdAt, parseErr := time.Parse(time.RFC3339, rawIssue["created_at"].(string))
@@ -247,16 +248,49 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 
 		issues[i].CreatedAt = createdAt
 		issues[i].EventsUrl = rawIssue["events_url"].(string)
+		issues[i].HtmlUrl = rawIssue["html_url"].(string)
 		issues[i].IsPr = isPr
+		issues[i].Title = rawIssue["title"].(string)
 	}
 
 	return issues, nil
 }
 
-func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
-	return gh.redisWrap(
-		fmt.Sprintf("github:repo:%s:%s:top_issues:%d", owner, repo, limit),
-		"top issues",
+func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
+	rawIssues, err := gh.redisWrap(
+		fmt.Sprintf("github:repo:%s:%s:issues", owner, repo),
+		"issues",
+		logger,
+		func() ([]map[string]interface{}, *errors.HttpError) {
+			issues, err := gh.paginateGithub(
+				logger,
+				fmt.Sprintf("/repos/%s/%s/issues?per_page=100&state=all&sort=created&direction=asc", owner, repo),
+				"application/vnd.github.v3+json",
+			)
+			if err != nil {
+				return nil, err
+			}
+			cleanIssueJsons(issues)
+			return issues, nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return parseIssues(logger, rawIssues)
+}
+
+func (gh *Client) filterTopIssues(
+	logger *log.Logger,
+	cacheKey, pluralType, owner, repo string,
+	limit int,
+	filterFn func(map[string]interface{}) bool,
+) ([]Issue, *errors.HttpError) {
+	rawIssues, err := gh.redisWrap(
+		cacheKey,
+		pluralType,
 		logger,
 		func() ([]map[string]interface{}, *errors.HttpError) {
 			url := fmt.Sprintf(
@@ -281,7 +315,7 @@ func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit in
 				}
 				json.Unmarshal(contents, &items)
 				for i := 0; i < len(items) && len(allItems) < limit; i++ {
-					if _, isPr := items[i]["pull_request"]; !isPr {
+					if filterFn(items[i]) {
 						allItems = append(allItems, items[i])
 					}
 				}
@@ -296,71 +330,43 @@ func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit in
 				}
 			}
 
-			for _, item := range allItems {
-				for key, _ := range item {
-					if key != "html_url" && key != "title" {
-						delete(item, key)
-					}
-				}
-			}
-
+			cleanIssueJsons(allItems)
 			return allItems, nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	return parseIssues(logger, rawIssues)
+}
+
+func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]Issue, *errors.HttpError) {
+	return gh.filterTopIssues(
+		logger,
+		fmt.Sprintf("github:repo:%s:%s:top_issues:%d", owner, repo, limit),
+		"top issues",
+		owner,
+		repo,
+		limit,
+		func(rawIssue map[string]interface{}) bool {
+			_, isPr := rawIssue["pull_request"]
+			return !isPr
 		},
 	)
 }
 
-func (gh *Client) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]map[string]interface{}, *errors.HttpError) {
-	return gh.redisWrap(
+func (gh *Client) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]Issue, *errors.HttpError) {
+	return gh.filterTopIssues(
+		logger,
 		fmt.Sprintf("github:repo:%s:%s:top_prs:%d", owner, repo, limit),
 		"top PRs",
-		logger,
-		func() ([]map[string]interface{}, *errors.HttpError) {
-			url := fmt.Sprintf(
-				"%s/repos/%s/%s/issues?per_page=100&state=open&sort=created&direction=desc",
-				gh.baseUrl,
-				owner,
-				repo,
-			)
-			items := make([]map[string]interface{}, 0)
-			allItems := make([]map[string]interface{}, 0)
-
-			for url != "" && len(allItems) < limit {
-				resp, httpErr := gh.sendGithubV3Request(logger, url)
-				if httpErr != nil {
-					return nil, httpErr
-				}
-				defer resp.Body.Close()
-				contents, err := ioutil.ReadAll(resp.Body)
-				if err != nil {
-					logger.Printf("ERROR: %s\n", err.Error())
-					return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-				}
-				json.Unmarshal(contents, &items)
-				for i := 0; i < len(items) && len(allItems) < limit; i++ {
-					if _, isPr := items[i]["pull_request"]; isPr {
-						allItems = append(allItems, items[i])
-					}
-				}
-				for i := 0; i < len(items); i++ {
-					items[i] = nil
-				}
-				match := LINK_NEXT_REGEX.FindStringSubmatch(resp.Header.Get("Link"))
-				if match != nil {
-					url = match[1]
-				} else {
-					url = ""
-				}
-			}
-
-			for _, item := range allItems {
-				for key, _ := range item {
-					if key != "html_url" && key != "title" {
-						delete(item, key)
-					}
-				}
-			}
-
-			return allItems, nil
+		owner,
+		repo,
+		limit,
+		func(rawIssue map[string]interface{}) bool {
+			_, isPr := rawIssue["pull_request"]
+			return isPr
 		},
 	)
 }

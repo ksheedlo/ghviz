@@ -79,15 +79,21 @@ func TestPagination(t *testing.T) {
 
 const issuesJson string = `[
 {"created_at":"2016-03-07T03:26:14.739Z","closed_at":null,
- "events_url":"https://api.example.com/issues/1/events"},
+ "events_url":"https://api.example.com/issues/1/events",
+ "html_url":"https://api.example.com/issues/1","title":"Test 1"},
 {"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z",
- "events_url":"https://api.example.com/issues/2/events"},
+ "events_url":"https://api.example.com/issues/2/events",
+ "html_url":"https://api.example.com/issues/2","title":"Test 2"},
 {"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
- "pull_request":{},"events_url":"https://api.example.com/issues/3/events"},
-{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},
- "events_url":"https://api.example.com/issues/4/events"}]`
+ "pull_request":{},"events_url":"https://api.example.com/issues/3/events",
+ "html_url":"https://api.example.com/pull/3","title":"Test 3"},
+{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{},"title":"Test 4",
+ "events_url":"https://api.example.com/issues/4/events",
+ "html_url":"https://api.example.com/pull/4"}]`
 
 func TestListIssues(t *testing.T) {
+	t.Parallel()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "application/vnd.github.v3+json", r.Header.Get("Accept"))
 		assert.Equal(t,
@@ -111,10 +117,12 @@ func TestListIssues(t *testing.T) {
 }
 
 const issuesBadCreatedAtJson = `[
-{"created_at":"fish","events_url":"https://api.example.com/issues/1/events"}]`
+{"created_at":"fish","events_url":"https://api.example.com/issues/1/events",
+ "html_url":"https://api.example.com/issues/1","title":"Test 1"}]`
 
 func TestListIssuesBadCreatedAt(t *testing.T) {
-	t.SkipNow()
+	t.Parallel()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, issuesBadCreatedAtJson)
 	}))
@@ -129,10 +137,13 @@ func TestListIssuesBadCreatedAt(t *testing.T) {
 }
 
 const issuesBadClosedAtJson = `[
-{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish",
- "events_url":"https://api.example.com/issues/1/events"}]`
+{"created_at":"2016-03-07T03:26:14.739Z","closed_at":"fish","title":"Test 1",
+ "events_url":"https://api.example.com/issues/1/events",
+ "html_url":"https://api.example.com/issues/1"}]`
 
 func TestListIssuesBadClosedAt(t *testing.T) {
+	t.Parallel()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, issuesBadClosedAtJson)
 	}))
@@ -147,6 +158,8 @@ func TestListIssuesBadClosedAt(t *testing.T) {
 }
 
 func TestRedisCacheHit(t *testing.T) {
+	t.Parallel()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.FailNow(t, "Test should hit Redis and not call the API!")
 	}))
@@ -169,6 +182,8 @@ func TestRedisCacheHit(t *testing.T) {
 }
 
 func TestRedisCacheSet(t *testing.T) {
+	t.Parallel()
+
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, issuesJson)
 	}))
@@ -188,4 +203,153 @@ func TestRedisCacheSet(t *testing.T) {
 	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	redisMock.AssertExpectations(t)
+}
+
+const topIssuesJsonPage1 string = `[{
+	"created_at":"2016-03-07T03:26:14.739Z",
+	"closed_at":null,
+  "events_url":"https://api.example.com/issues/1/events",
+  "html_url":"https://api.example.com/issues/1",
+  "title":"Test 1"
+}, {
+	"created_at":"2016-03-07T03:23:53.002Z",
+	"closed_at":"2016-03-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/2/events",
+  "html_url":"https://api.example.com/issues/2",
+	"title":"Test 2"
+}, {
+	"created_at":"2016-03-07T03:46:36.717Z",
+	"closed_at":"2016-03-07T03:46:55.993Z",
+  "pull_request":{},
+	"events_url":"https://api.example.com/issues/3/events",
+  "html_url":"https://api.example.com/pull/3",
+  "title":"Test 3"
+}, {
+	"created_at":"2016-03-07T03:46:46.458Z",
+	"pull_request":{},
+	"title":"Test 4",
+  "events_url":"https://api.example.com/issues/4/events",
+  "html_url":"https://api.example.com/pull/4"
+}, {
+	"created_at":"2017-03-07T03:23:53.002Z",
+	"closed_at":null,
+  "events_url":"https://api.example.com/issues/5/events",
+  "html_url":"https://api.example.com/issues/5",
+	"title":"Test 5"
+}]`
+
+const topIssuesJsonPage2 string = `[{
+	"created_at":"2016-06-07T03:26:14.739Z",
+	"closed_at":null,
+  "events_url":"https://api.example.com/issues/6/events",
+  "html_url":"https://api.example.com/issues/6",
+  "title":"Test 6"
+}, {
+	"created_at":"2016-06-07T03:23:53.002Z",
+	"closed_at":"2016-06-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/7/events",
+  "html_url":"https://api.example.com/issues/7",
+	"title":"Test 7"
+}, {
+	"created_at":"2016-07-07T03:23:53.002Z",
+	"closed_at":"2016-07-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/8/events",
+  "html_url":"https://api.example.com/issues/8",
+	"title":"Test 8"
+}]`
+
+func TestTopIssues(t *testing.T) {
+	t.Parallel()
+
+	var nextPage string
+	call := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		call++
+		if call < 2 {
+			w.Header().Add("Link", fmt.Sprintf("<%s>; rel=\"next\"", nextPage))
+			fmt.Fprintln(w, topIssuesJsonPage1)
+		} else {
+			assert.Equal(t, pathAndQueryOnly(t, nextPage), r.URL.String())
+			fmt.Fprintln(w, topIssuesJsonPage2)
+		}
+	}))
+	defer ts.Close()
+	nextPage = fmt.Sprintf("%s/repos/lodash/lodash/issues?page=2", ts.URL)
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	allIssues, err := gh.ListTopIssues(dummyLogger(t), "lodash", "lodash", 5)
+	assert.NoError(t, err)
+	assert.Equal(t, call, 2)
+	assert.Equal(t, len(allIssues), 5)
+	assert.Equal(t, allIssues[len(allIssues)-1].Title, "Test 7")
+
+	for _, issue := range allIssues {
+		assert.False(t, issue.IsPr)
+	}
+}
+
+const topPrsJsonPage2 string = `[{
+	"created_at":"2016-06-07T03:26:14.739Z",
+	"closed_at":null,
+  "events_url":"https://api.example.com/issues/6/events",
+  "html_url":"https://api.example.com/issues/6",
+	"pull_request":{},
+  "title":"PR 6"
+}, {
+	"created_at":"2016-06-07T03:23:53.002Z",
+	"closed_at":"2016-06-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/7/events",
+  "html_url":"https://api.example.com/issues/7",
+	"pull_request":{},
+	"title":"PR 7"
+}, {
+	"created_at":"2016-07-07T03:23:53.002Z",
+	"closed_at":"2016-07-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/8/events",
+  "html_url":"https://api.example.com/issues/8",
+	"pull_request":{},
+	"title":"PR 8"
+}, {
+	"created_at":"2016-08-07T03:23:53.002Z",
+	"closed_at":"2016-08-07T03:25:41.469Z",
+  "events_url":"https://api.example.com/issues/8/events",
+  "html_url":"https://api.example.com/issues/8",
+	"pull_request":{},
+	"title":"PR 9"
+}]`
+
+func TestTopPrs(t *testing.T) {
+	t.Parallel()
+
+	var nextPage string
+	call := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		call++
+		if call < 2 {
+			w.Header().Add("Link", fmt.Sprintf("<%s>; rel=\"next\"", nextPage))
+			fmt.Fprintln(w, topIssuesJsonPage1)
+		} else {
+			assert.Equal(t, pathAndQueryOnly(t, nextPage), r.URL.String())
+			fmt.Fprintln(w, topPrsJsonPage2)
+		}
+	}))
+	defer ts.Close()
+	nextPage = fmt.Sprintf("%s/repos/lodash/lodash/issues?page=2", ts.URL)
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	allIssues, err := gh.ListTopPrs(dummyLogger(t), "lodash", "lodash", 5)
+	assert.NoError(t, err)
+	assert.Equal(t, call, 2)
+	assert.Equal(t, len(allIssues), 5)
+	assert.Equal(t, allIssues[len(allIssues)-1].Title, "PR 8")
+
+	for _, issue := range allIssues {
+		assert.True(t, issue.IsPr)
+	}
 }
