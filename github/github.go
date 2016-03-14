@@ -66,16 +66,46 @@ const (
 
 var issueEventTypes map[string]DetailedIssueEventType = map[string]DetailedIssueEventType{
 	"closed":    IssueClosed,
+	"created":   IssueCreated,
 	"merged":    IssueMerged,
 	"labeled":   IssueLabeled,
 	"unlabeled": IssueUnlabeled,
 }
 
+var invertedIssueEventTypes map[DetailedIssueEventType]string = (func(
+	types map[string]DetailedIssueEventType,
+) map[DetailedIssueEventType]string {
+	invertedMap := make(map[DetailedIssueEventType]string)
+	for key, value := range types {
+		invertedMap[value] = key
+	}
+	return invertedMap
+})(issueEventTypes)
+
 type DetailedIssueEvent struct {
-	ActorId   string
-	CreatedAt time.Time
-	Detail    interface{}
-	EventType DetailedIssueEventType
+	ActorId     string
+	CreatedAt   time.Time
+	Detail      interface{}
+	EventType   DetailedIssueEventType
+	Id          string
+	IssueNumber int
+}
+
+type ByCreatedAt []DetailedIssueEvent
+
+func (a ByCreatedAt) Len() int           { return len(a) }
+func (a ByCreatedAt) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByCreatedAt) Less(i, j int) bool { return a[i].CreatedAt.Before(a[j].CreatedAt) }
+
+func (dev *DetailedIssueEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"actor_id":     dev.ActorId,
+		"created_at":   dev.CreatedAt,
+		"detail":       dev.Detail,
+		"event_type":   invertedIssueEventTypes[dev.EventType],
+		"id":           dev.Id,
+		"issue_number": dev.IssueNumber,
+	})
 }
 
 func withDefaultBaseUrl(baseUrl string) string {
@@ -334,9 +364,11 @@ func (gh *Client) ListIssueEvents(logger *log.Logger, issue *Issue) ([]DetailedI
 
 	var detailedEvents []DetailedIssueEvent
 	detailedEvents = append(detailedEvents, DetailedIssueEvent{
-		ActorId:   issue.Submitter,
-		CreatedAt: issue.CreatedAt,
-		EventType: IssueCreated,
+		ActorId:     issue.Submitter,
+		CreatedAt:   issue.CreatedAt,
+		EventType:   IssueCreated,
+		Id:          fmt.Sprintf("cr%d", issue.Number),
+		IssueNumber: issue.Number,
 	})
 	for _, event := range issueEvents {
 		if eventType, eventIsKnown := issueEventTypes[event["event"].(string)]; eventIsKnown {
@@ -357,10 +389,12 @@ func (gh *Client) ListIssueEvents(logger *log.Logger, issue *Issue) ([]DetailedI
 				}
 			}
 			detailedEvents = append(detailedEvents, DetailedIssueEvent{
-				ActorId:   actorId,
-				CreatedAt: createdAt,
-				Detail:    detail,
-				EventType: eventType,
+				ActorId:     actorId,
+				CreatedAt:   createdAt,
+				Detail:      detail,
+				EventType:   eventType,
+				Id:          fmt.Sprintf("%d", int(event["id"].(float64))),
+				IssueNumber: issue.Number,
 			})
 		}
 	}

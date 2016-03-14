@@ -55,7 +55,7 @@ func main() {
 					c <- make(map[string]int)
 					return
 				}
-				scoringEvents := simulate.ScoreIssue(issueEvents, "ready for review")
+				scoringEvents := simulate.ScoreIssues(issueEvents, "ready for review")
 				issueScores := simulate.ScoreEvents(scoringEvents)
 				c <- issueScores
 			}(i)

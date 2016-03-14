@@ -11,25 +11,28 @@ import (
 func TestScoreUnlabeledReview(t *testing.T) {
 	t.Parallel()
 
-	scoringEvents := ScoreIssue(
+	scoringEvents := ScoreIssues(
 		[]github.DetailedIssueEvent{
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(1, 0),
-				Detail:    nil,
-				EventType: github.IssueCreated,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(1, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(2, 0),
-				Detail:    map[string]interface{}{"name": "ready label"},
-				EventType: github.IssueLabeled,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(2, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueLabeled,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester2",
-				CreatedAt: time.Unix(3, 0),
-				Detail:    map[string]interface{}{"name": "ready label"},
-				EventType: github.IssueUnlabeled,
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(3, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueUnlabeled,
+				IssueNumber: 1,
 			},
 		},
 		"ready label",
@@ -45,25 +48,28 @@ func TestScoreUnlabeledReview(t *testing.T) {
 func TestScoreMergedReview(t *testing.T) {
 	t.Parallel()
 
-	scoringEvents := ScoreIssue(
+	scoringEvents := ScoreIssues(
 		[]github.DetailedIssueEvent{
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(1, 0),
-				Detail:    nil,
-				EventType: github.IssueCreated,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(1, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(2, 0),
-				Detail:    map[string]interface{}{"name": "ready label"},
-				EventType: github.IssueLabeled,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(2, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueLabeled,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester2",
-				CreatedAt: time.Unix(3, 0),
-				Detail:    nil,
-				EventType: github.IssueMerged,
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(3, 0),
+				Detail:      nil,
+				EventType:   github.IssueMerged,
+				IssueNumber: 1,
 			},
 		},
 		"ready label",
@@ -79,19 +85,21 @@ func TestScoreMergedReview(t *testing.T) {
 func TestScoreClosedBeforeReady(t *testing.T) {
 	t.Parallel()
 
-	scoringEvents := ScoreIssue(
+	scoringEvents := ScoreIssues(
 		[]github.DetailedIssueEvent{
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(1, 0),
-				Detail:    nil,
-				EventType: github.IssueCreated,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(1, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester2",
-				CreatedAt: time.Unix(3, 0),
-				Detail:    nil,
-				EventType: github.IssueClosed,
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(3, 0),
+				Detail:      nil,
+				EventType:   github.IssueClosed,
+				IssueNumber: 1,
 			},
 		},
 		"ready label",
@@ -105,25 +113,28 @@ func TestScoreClosedBeforeReady(t *testing.T) {
 func TestScoreExtraneousLabel(t *testing.T) {
 	t.Parallel()
 
-	scoringEvents := ScoreIssue(
+	scoringEvents := ScoreIssues(
 		[]github.DetailedIssueEvent{
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(1, 0),
-				Detail:    nil,
-				EventType: github.IssueCreated,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(1, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester1",
-				CreatedAt: time.Unix(2, 0),
-				Detail:    map[string]interface{}{"name": "something else"},
-				EventType: github.IssueLabeled,
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(2, 0),
+				Detail:      map[string]interface{}{"name": "something else"},
+				EventType:   github.IssueLabeled,
+				IssueNumber: 1,
 			},
 			github.DetailedIssueEvent{
-				ActorId:   "tester2",
-				CreatedAt: time.Unix(3, 0),
-				Detail:    map[string]interface{}{"name": "something else"},
-				EventType: github.IssueUnlabeled,
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(3, 0),
+				Detail:      map[string]interface{}{"name": "something else"},
+				EventType:   github.IssueUnlabeled,
+				IssueNumber: 1,
 			},
 		},
 		"ready label",
@@ -132,6 +143,68 @@ func TestScoreExtraneousLabel(t *testing.T) {
 	assert.Len(t, scoringEvents, 1)
 	assert.Equal(t, scoringEvents[0].ActorId, "tester1")
 	assert.Equal(t, scoringEvents[0].EventType, IssueOpened)
+}
+
+func TestScoreMultipleIssues(t *testing.T) {
+	t.Parallel()
+
+	scoringEvents := ScoreIssues(
+		[]github.DetailedIssueEvent{
+			github.DetailedIssueEvent{
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(1, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 1,
+			},
+			github.DetailedIssueEvent{
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(2, 0),
+				Detail:      nil,
+				EventType:   github.IssueCreated,
+				IssueNumber: 2,
+			},
+			github.DetailedIssueEvent{
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(3, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueLabeled,
+				IssueNumber: 1,
+			},
+			github.DetailedIssueEvent{
+				ActorId:     "tester1",
+				CreatedAt:   time.Unix(4, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueLabeled,
+				IssueNumber: 2,
+			},
+			github.DetailedIssueEvent{
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(5, 0),
+				Detail:      map[string]interface{}{"name": "ready label"},
+				EventType:   github.IssueUnlabeled,
+				IssueNumber: 1,
+			},
+			github.DetailedIssueEvent{
+				ActorId:     "tester2",
+				CreatedAt:   time.Unix(6, 0),
+				Detail:      nil,
+				EventType:   github.IssueClosed,
+				IssueNumber: 2,
+			},
+		},
+		"ready label",
+	)
+
+	assert.Len(t, scoringEvents, 4)
+	assert.Equal(t, scoringEvents[0].ActorId, "tester1")
+	assert.Equal(t, scoringEvents[0].EventType, IssueOpened)
+	assert.Equal(t, scoringEvents[1].ActorId, "tester1")
+	assert.Equal(t, scoringEvents[1].EventType, IssueOpened)
+	assert.Equal(t, scoringEvents[2].ActorId, "tester2")
+	assert.Equal(t, scoringEvents[2].EventType, IssueReviewed)
+	assert.Equal(t, scoringEvents[3].ActorId, "tester2")
+	assert.Equal(t, scoringEvents[3].EventType, IssueReviewed)
 }
 
 func TestScoreEvents(t *testing.T) {

@@ -27,10 +27,13 @@ type ScoringEvent struct {
 	Timestamp time.Time
 }
 
-func ScoreIssue(issueEvents []github.DetailedIssueEvent, readyLabel string) []ScoringEvent {
+func ScoreIssues(issueEvents []github.DetailedIssueEvent, readyLabel string) []ScoringEvent {
 	var scoringEvents []ScoringEvent
-	prState := PrStateSubmitted
+	prStates := make(map[int]PrState)
 	for _, event := range issueEvents {
+		if _, hasIssueState := prStates[event.IssueNumber]; !hasIssueState {
+			prStates[event.IssueNumber] = PrStateSubmitted
+		}
 		switch event.EventType {
 		case github.IssueCreated:
 			// 1, Creating the issue counts as a submission.
@@ -44,14 +47,14 @@ func ScoreIssue(issueEvents []github.DetailedIssueEvent, readyLabel string) []Sc
 			//    for review.
 			labelName := (event.Detail.(map[string]interface{}))["name"].(string)
 			if labelName == readyLabel {
-				prState = PrStateReady
+				prStates[event.IssueNumber] = PrStateReady
 			}
 		case github.IssueUnlabeled:
 			// 3. When a reviewer removes the ready label from a PR in the ready
 			//    state, that constitutes a review.
 			labelName := (event.Detail.(map[string]interface{}))["name"].(string)
-			if labelName == readyLabel && prState == PrStateReady {
-				prState = PrStateReviewed
+			if labelName == readyLabel && prStates[event.IssueNumber] == PrStateReady {
+				prStates[event.IssueNumber] = PrStateReviewed
 				scoringEvents = append(scoringEvents, ScoringEvent{
 					ActorId:   event.ActorId,
 					EventType: IssueReviewed,
@@ -61,8 +64,8 @@ func ScoreIssue(issueEvents []github.DetailedIssueEvent, readyLabel string) []Sc
 		case github.IssueClosed, github.IssueMerged:
 			// 4. If a reviewer merges a PR from the ready state, that also
 			//    constitutes a review. This is a shorthand version of case 3.
-			if prState == PrStateReady {
-				prState = PrStateReviewed
+			if prStates[event.IssueNumber] == PrStateReady {
+				prStates[event.IssueNumber] = PrStateReviewed
 				scoringEvents = append(scoringEvents, ScoringEvent{
 					ActorId:   event.ActorId,
 					EventType: IssueReviewed,

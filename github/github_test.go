@@ -413,12 +413,14 @@ const issueEventsJson string = `[{
 	"actor":{"login":"tester1"},
 	"created_at":"2016-07-07T03:23:53.002Z",
 	"event":"labeled",
+	"id":2,
 	"label":{"name":"ready"}
 }, {
 	"actor":{"login":"tester2"},
 	"commit_id":"fafafa1234678",
 	"created_at":"2016-08-07T03:23:53.002Z",
-	"event":"merged"
+	"event":"merged",
+	"id":3
 }]`
 
 func TestListIssueEvents(t *testing.T) {
