@@ -284,42 +284,53 @@ func cleanIssueJsons(issues []map[string]interface{}) {
 	}
 }
 
+func parseIssue(
+	logger *log.Logger,
+	issue *Issue,
+	rawIssue map[string]interface{},
+) *errors.HttpError {
+	createdAt, parseErr := time.Parse(time.RFC3339, rawIssue["created_at"].(string))
+	if parseErr != nil {
+		logger.Printf("ERROR: %s\n", parseErr.Error())
+		return &errors.HttpError{
+			Message: "Server Error", Status: http.StatusInternalServerError,
+		}
+	}
+	issue.IsClosed = false
+	var rawClosedAt interface{}
+	var hasClosedAt bool
+	if rawClosedAt, hasClosedAt = rawIssue["closed_at"]; hasClosedAt {
+		issue.IsClosed = (rawClosedAt != nil)
+	}
+	if issue.IsClosed {
+		closedAt, parseErr := time.Parse(time.RFC3339, rawClosedAt.(string))
+		if parseErr != nil {
+			logger.Printf("ERROR: %s\n", parseErr.Error())
+			return &errors.HttpError{
+				Message: "Server Error",
+				Status:  http.StatusInternalServerError,
+			}
+		}
+		issue.ClosedAt = closedAt
+	}
+	_, isPr := rawIssue["pull_request"]
+
+	issue.CreatedAt = createdAt
+	issue.EventsUrl = rawIssue["events_url"].(string)
+	issue.HtmlUrl = rawIssue["html_url"].(string)
+	issue.IsPr = isPr
+	issue.Number = int(rawIssue["number"].(float64))
+	issue.Submitter = (rawIssue["user"].(map[string]interface{}))["login"].(string)
+	issue.Title = rawIssue["title"].(string)
+	return nil
+}
+
 func parseIssues(logger *log.Logger, rawIssues []map[string]interface{}) ([]Issue, *errors.HttpError) {
 	issues := make([]Issue, len(rawIssues))
 	for i, rawIssue := range rawIssues {
-		createdAt, parseErr := time.Parse(time.RFC3339, rawIssue["created_at"].(string))
-		if parseErr != nil {
-			logger.Printf("ERROR: %s\n", parseErr.Error())
-			return nil, &errors.HttpError{
-				Message: "Server Error", Status: http.StatusInternalServerError,
-			}
+		if err := parseIssue(logger, &issues[i], rawIssue); err != nil {
+			return nil, err
 		}
-		issues[i].IsClosed = false
-		var rawClosedAt interface{}
-		var hasClosedAt bool
-		if rawClosedAt, hasClosedAt = rawIssue["closed_at"]; hasClosedAt {
-			issues[i].IsClosed = (rawClosedAt != nil)
-		}
-		if issues[i].IsClosed {
-			closedAt, parseErr := time.Parse(time.RFC3339, rawClosedAt.(string))
-			if parseErr != nil {
-				logger.Printf("ERROR: %s\n", parseErr.Error())
-				return nil, &errors.HttpError{
-					Message: "Server Error",
-					Status:  http.StatusInternalServerError,
-				}
-			}
-			issues[i].ClosedAt = closedAt
-		}
-		_, isPr := rawIssue["pull_request"]
-
-		issues[i].CreatedAt = createdAt
-		issues[i].EventsUrl = rawIssue["events_url"].(string)
-		issues[i].HtmlUrl = rawIssue["html_url"].(string)
-		issues[i].IsPr = isPr
-		issues[i].Number = int(rawIssue["number"].(float64))
-		issues[i].Submitter = (rawIssue["user"].(map[string]interface{}))["login"].(string)
-		issues[i].Title = rawIssue["title"].(string)
 	}
 
 	return issues, nil
@@ -356,46 +367,65 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 	return parseIssues(logger, rawIssues)
 }
 
-func (gh *Client) ListIssueEvents(logger *log.Logger, issue *Issue) ([]DetailedIssueEvent, *errors.HttpError) {
-	issueEvents, err := gh.paginateGithub(logger, issue.EventsUrl, "application/vnd.github.v3+json")
+func (gh *Client) ListAllPrEvents(
+	logger *log.Logger,
+	owner, repo string,
+) ([]DetailedIssueEvent, *errors.HttpError) {
+	issueEvents, err := gh.paginateGithub(
+		logger,
+		fmt.Sprintf("%s/repos/%s/%s/issues/events?per_page=100", gh.baseUrl, owner, repo),
+		"application/vnd.github.v3+json",
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	var detailedEvents []DetailedIssueEvent
-	detailedEvents = append(detailedEvents, DetailedIssueEvent{
-		ActorId:     issue.Submitter,
-		CreatedAt:   issue.CreatedAt,
-		EventType:   IssueCreated,
-		Id:          fmt.Sprintf("cr%d", issue.Number),
-		IssueNumber: issue.Number,
-	})
+	knownIssues := make(map[int]Issue)
 	for _, event := range issueEvents {
 		if eventType, eventIsKnown := issueEventTypes[event["event"].(string)]; eventIsKnown {
 			actorId := (event["actor"].(map[string]interface{}))["login"].(string)
-			var detail interface{}
-			switch eventType {
-			case IssueClosed, IssueMerged:
-				detail = event["commit_id"]
-			case IssueLabeled, IssueUnlabeled:
-				detail = event["label"]
-			}
-			createdAt, err := time.Parse(time.RFC3339, event["created_at"].(string))
-			if err != nil {
-				logger.Printf("ERROR: %s\n", err)
-				return nil, &errors.HttpError{
-					Message: "Server Error",
-					Status:  http.StatusInternalServerError,
+			issueNumber := int((event["issue"].(map[string]interface{}))["number"].(float64))
+			issue, issueIsKnown := knownIssues[issueNumber]
+			if !issueIsKnown {
+				issue = Issue{}
+				parseIssue(logger, &issue, event["issue"].(map[string]interface{}))
+				knownIssues[issue.Number] = issue
+				if issue.IsPr {
+					detailedEvents = append(detailedEvents, DetailedIssueEvent{
+						ActorId:     issue.Submitter,
+						CreatedAt:   issue.CreatedAt,
+						EventType:   IssueCreated,
+						Id:          fmt.Sprintf("cr%d", issue.Number),
+						IssueNumber: issue.Number,
+					})
 				}
 			}
-			detailedEvents = append(detailedEvents, DetailedIssueEvent{
-				ActorId:     actorId,
-				CreatedAt:   createdAt,
-				Detail:      detail,
-				EventType:   eventType,
-				Id:          fmt.Sprintf("%d", int(event["id"].(float64))),
-				IssueNumber: issue.Number,
-			})
+			if issue.IsPr {
+				var detail interface{}
+				switch eventType {
+				case IssueClosed, IssueMerged:
+					detail = event["commit_id"]
+				case IssueLabeled, IssueUnlabeled:
+					detail = event["label"]
+				}
+				createdAt, err := time.Parse(time.RFC3339, event["created_at"].(string))
+				if err != nil {
+					logger.Printf("ERROR: %s\n", err)
+					return nil, &errors.HttpError{
+						Message: "Server Error",
+						Status:  http.StatusInternalServerError,
+					}
+				}
+				detailedEvents = append(detailedEvents, DetailedIssueEvent{
+					ActorId:     actorId,
+					CreatedAt:   createdAt,
+					Detail:      detail,
+					EventType:   eventType,
+					Id:          fmt.Sprintf("%d", int(event["id"].(float64))),
+					IssueNumber: issue.Number,
+				})
+			}
 		}
 	}
 

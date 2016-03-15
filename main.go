@@ -8,7 +8,6 @@ import (
 	"os"
 	"path"
 	"runtime"
-	"sort"
 	"text/template"
 
 	"github.com/gorilla/context"
@@ -66,54 +65,6 @@ func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Req
 		}
 		events := models.IssueEventsFromApi(allIssues)
 		jsonBlob, jsonErr := json.Marshal(simulate.OpenIssueAndPrCounts(events))
-		if jsonErr != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBlob)
-	}
-}
-
-func ListIssueEvents(gh *github.Client) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
-		vars := mux.Vars(r)
-		issues, httpErr := gh.ListIssues(logger, vars["owner"], vars["repo"])
-		if httpErr != nil {
-			w.WriteHeader(httpErr.Status)
-			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
-			return
-		}
-		c := make(chan []github.DetailedIssueEvent)
-		numPrs := 0
-		for i, issue := range issues {
-			if issue.IsPr {
-				numPrs++
-				go func(ii int) {
-					logger.Printf("Fetching events for PR #%d", issues[ii].Number)
-					issueEvents, err := gh.ListIssueEvents(logger, &issues[ii])
-					if err != nil {
-						logger.Printf(
-							"ERROR: %s; events from issue %d will be dropped.",
-							err.Error(),
-							issues[ii].Number,
-						)
-						c <- nil
-						return
-					}
-					c <- issueEvents
-				}(i)
-			}
-		}
-		var allEvents []github.DetailedIssueEvent
-		for i := 0; i < numPrs; i++ {
-			events := <-c
-			allEvents = append(allEvents, events...)
-		}
-		sort.Sort(github.ByCreatedAt(allEvents))
-		jsonBlob, jsonErr := json.Marshal(allEvents)
 		if jsonErr != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("Server Error\n"))
@@ -220,7 +171,6 @@ func main() {
 	r.HandleFunc("/dashboard/{path:.*}", withMiddleware(ServeStaticFile))
 	r.HandleFunc("/gh/{owner}/{repo}/star_counts", withMiddleware(ListStarCounts(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", withMiddleware(ListOpenIssuesAndPrs(gh)))
-	r.HandleFunc("/gh/{owner}/{repo}/issue_events", withMiddleware(ListIssueEvents(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(TopIssues(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_prs", withMiddleware(TopPrs(gh)))
 	http.ListenAndServe(":4000", r)

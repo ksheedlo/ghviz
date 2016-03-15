@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"sort"
+	"strconv"
+	"time"
 
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/interfaces"
@@ -34,41 +38,59 @@ func main() {
 		Token:       os.Getenv("GITHUB_TOKEN"),
 	})
 	logger := log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Lshortfile|log.LUTC)
-	issues, err := gh.ListIssues(logger, os.Getenv("GHVIZ_OWNER"), os.Getenv("GHVIZ_REPO"))
+	owner := os.Getenv("GHVIZ_OWNER")
+	repo := os.Getenv("GHVIZ_REPO")
+	eventListCacheKey := fmt.Sprintf("gh:repos:%s:%s:issue_events", owner, repo)
+	allPrEvents, err := gh.ListAllPrEvents(logger, owner, repo)
 	if err != nil {
 		logger.Fatal(err)
 	}
-	c := make(chan map[string]int)
-	numPrs := 0
-	for i, issue := range issues {
-		if issue.IsPr {
-			numPrs++
-			go func(ii int) {
-				logger.Printf("Fetching events for PR #%d", issues[ii].Number)
-				issueEvents, err := gh.ListIssueEvents(logger, &issues[ii])
-				if err != nil {
-					logger.Printf(
-						"ERROR: %s; issue %d will not contribute to scoring.",
-						err.Error(),
-						issues[ii].Number,
-					)
-					c <- make(map[string]int)
-					return
-				}
-				scoringEvents := simulate.ScoreIssues(issueEvents, "ready for review")
-				issueScores := simulate.ScoreEvents(scoringEvents)
-				c <- issueScores
-			}(i)
+	sort.Sort(github.ByCreatedAt(allPrEvents))
+	scoringEvents := simulate.ScoreIssues(allPrEvents, "ready for review")
+
+	var members []interfaces.ZZ
+	for _, event := range scoringEvents {
+		timestamp := float64(event.Timestamp.Unix())
+		if jsonBlob, jsonErr := json.Marshal(&event); jsonErr != nil {
+			logger.Printf(
+				"ERROR: %s; a scoring event will be dropped.",
+				jsonErr.Error(),
+			)
+		} else {
+			members = append(members, interfaces.ZZ{
+				Score:  timestamp,
+				Member: jsonBlob,
+			})
 		}
 	}
-	totalScores := make(map[string]int)
-	for i := 0; i < numPrs; i++ {
-		issueScores := <-c
-		for userId, score := range issueScores {
-			totalScores[userId] = totalScores[userId] + score
-		}
+	if _, err := redisClient.ZAdd(eventListCacheKey, members...); err != nil {
+		logger.Fatal(err)
 	}
-	for userId, score := range totalScores {
-		fmt.Printf("%d %s\n", score, userId)
+	startDate := strconv.FormatInt(
+		time.Date(2016, time.February, 1, 0, 0, 0, 0, time.UTC).Unix(),
+		10,
+	)
+	endDate := strconv.FormatInt(
+		time.Date(2016, time.March, 1, 0, 0, 0, 0, time.UTC).Unix(),
+		10,
+	)
+	scoringEventJsons, redisErr := redisClient.ZRangeByScore(
+		eventListCacheKey,
+		&interfaces.ZRangeByScoreOpts{Min: startDate, Max: endDate},
+	)
+	if redisErr != nil {
+		logger.Fatal(redisErr)
+	}
+	var eventsToScore []simulate.ScoringEvent
+	for _, scoringEventJson := range scoringEventJsons {
+		scoringEvent := simulate.ScoringEvent{}
+		if jsonErr := json.Unmarshal([]byte(scoringEventJson), &scoringEvent); jsonErr != nil {
+			logger.Fatal(jsonErr)
+		}
+		eventsToScore = append(eventsToScore, scoringEvent)
+	}
+	highScores := simulate.ScoreEvents(eventsToScore)
+	for key, value := range highScores {
+		fmt.Printf("%d %s\n", value, key)
 	}
 }

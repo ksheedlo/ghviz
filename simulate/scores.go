@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/ksheedlo/ghviz/github"
@@ -13,6 +14,56 @@ const (
 	IssueReviewed
 )
 
+var scoringEventTypesByKey map[string]ScoringEventType = map[string]ScoringEventType{
+	"opened":   IssueOpened,
+	"reviewed": IssueReviewed,
+}
+
+var scoringEventKeysByType map[ScoringEventType]string = (func(
+	types map[string]ScoringEventType,
+) map[ScoringEventType]string {
+	invertedMap := make(map[ScoringEventType]string)
+	for key, value := range types {
+		invertedMap[value] = key
+	}
+	return invertedMap
+})(scoringEventTypesByKey)
+
+type ScoringEvent struct {
+	ActorId   string
+	EventType ScoringEventType
+	Timestamp time.Time
+}
+
+func (sev *ScoringEvent) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"actor_id":   sev.ActorId,
+		"event_type": scoringEventKeysByType[sev.EventType],
+		"timestamp":  sev.Timestamp,
+	})
+}
+
+func (sev *ScoringEvent) UnmarshalJSON(bytes []byte) error {
+	item := make(map[string]interface{})
+	if err := json.Unmarshal(bytes, &item); err != nil {
+		return err
+	}
+	timestamp, err := time.Parse(time.RFC3339, item["timestamp"].(string))
+	if err != nil {
+		return err
+	}
+	sev.ActorId = item["actor_id"].(string)
+	sev.EventType = scoringEventTypesByKey[item["event_type"].(string)]
+	sev.Timestamp = timestamp
+	return nil
+}
+
+type ByTimestamp []ScoringEvent
+
+func (a ByTimestamp) Len() int           { return len(a) }
+func (a ByTimestamp) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByTimestamp) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
+
 type PrState int
 
 const (
@@ -20,12 +71,6 @@ const (
 	PrStateReady
 	PrStateReviewed
 )
-
-type ScoringEvent struct {
-	ActorId   string
-	EventType ScoringEventType
-	Timestamp time.Time
-}
 
 func ScoreIssues(issueEvents []github.DetailedIssueEvent, readyLabel string) []ScoringEvent {
 	var scoringEvents []ScoringEvent
