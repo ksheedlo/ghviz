@@ -17,6 +17,7 @@ type ZRangeByScoreOpts struct {
 }
 
 type Rediser interface {
+	Del(string) (int64, error)
 	Get(string) (string, error)
 	Set(string, string, time.Duration) error
 	ZAdd(string, ...ZZ) (int64, error)
@@ -31,6 +32,10 @@ func NewGoRedis(redisClient *redis.Client) Rediser {
 	gr := new(GoRedisAdapter)
 	gr.redisClient = redisClient
 	return gr
+}
+
+func (gr *GoRedisAdapter) Del(key string) (int64, error) {
+	return gr.redisClient.Del(key).Result()
 }
 
 func (gr *GoRedisAdapter) Get(key string) (string, error) {
@@ -65,6 +70,11 @@ func (gr *GoRedisAdapter) ZRangeByScore(
 
 type MockRediser struct {
 	mock.Mock
+}
+
+func (m *MockRediser) Del(key string) (int64, error) {
+	args := m.Called(key)
+	return args.Get(0).(int64), args.Error(1)
 }
 
 func (m *MockRediser) Get(key string) (string, error) {

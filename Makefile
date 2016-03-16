@@ -15,7 +15,10 @@ ghviz: main.go errors/*.go github/*.go interfaces/*.go middleware/*.go models/*.
 highscores/highscores: highscores/main.go github/*.go simulate/*.go
 	cd highscores; go build
 
-go: ghviz highscores/highscores
+services/prewarm/prewarm: prewarm/*.go github/*.go interfaces/*.go services/prewarm/*.go simulate/*.go
+	cd services/prewarm; go build
+
+go: ghviz highscores/highscores services/prewarm/prewarm
 
 clean:
 	rm ghviz dashboard/bundle.js dashboard/bundle.min.js
