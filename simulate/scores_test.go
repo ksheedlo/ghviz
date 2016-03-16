@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"sort"
 	"testing"
 	"time"
 
@@ -214,6 +215,9 @@ func TestScoreEvents(t *testing.T) {
 		ScoringEvent{ActorId: "Tester1", EventType: IssueOpened},
 		ScoringEvent{ActorId: "Tester2", EventType: IssueReviewed},
 	})
-	assert.Equal(t, scores["Tester1"], 200)
-	assert.Equal(t, scores["Tester2"], 1000)
+	sort.Sort(ByScore(scores))
+	assert.Equal(t, scores[0].ActorId, "Tester1")
+	assert.Equal(t, scores[0].Score, 200)
+	assert.Equal(t, scores[1].ActorId, "Tester2")
+	assert.Equal(t, scores[1].Score, 1000)
 }

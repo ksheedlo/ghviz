@@ -8,7 +8,10 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"sort"
+	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -133,6 +136,108 @@ func TopPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	}
 }
 
+func HighScores(redis interfaces.Rediser) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
+		vars := mux.Vars(r)
+		owner := vars["owner"]
+		repo := vars["repo"]
+		yearString := vars["year"]
+		monthString := vars["month"]
+		startYear, parseErr := strconv.Atoi(yearString)
+		if parseErr != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(fmt.Sprintf(
+				`{"type":"error","code":400,"message":"%s is not a valid year"}`,
+				yearString,
+			)))
+			return
+		}
+		startMonth, parseErr := strconv.Atoi(monthString)
+		if parseErr != nil || startMonth < 1 || 12 < startMonth {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(fmt.Sprintf(
+				`{"type":"error","code":400,"message":"%s is not a valid month between 01-12"}`,
+				monthString,
+			)))
+			return
+		}
+		endYear := startYear
+		endMonth := startMonth + 1
+		if endMonth == 13 {
+			endYear = startYear + 1
+			startMonth = 1
+		}
+		startDate := strconv.FormatInt(
+			time.Date(startYear, time.Month(startMonth), 1, 0, 0, 0, 0, time.UTC).Unix(),
+			10,
+		)
+		endDate := strconv.FormatInt(
+			time.Date(endYear, time.Month(endMonth), 1, 0, 0, 0, 0, time.UTC).Unix(),
+			10,
+		)
+		eventSetId, err := redis.Get(
+			fmt.Sprintf("gh:repos:%s:%s:issue_event_setid", owner, repo),
+		)
+		if err != nil || eventSetId == "" {
+			w.WriteHeader(http.StatusNotFound)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(fmt.Sprintf(
+				`{"type":"error","code":404,"message":"Scores for %s/%s were not found."}`,
+				owner,
+				repo,
+			)))
+			return
+		}
+
+		scoringEventJsons, redisErr := redis.ZRangeByScore(
+			fmt.Sprintf("gh:repos:%s:%s:issue_events:%s", owner, repo, eventSetId),
+			&interfaces.ZRangeByScoreOpts{Min: startDate, Max: endDate},
+		)
+		if redisErr != nil {
+			logger.Printf("ERROR: %s\n", redisErr.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(fmt.Sprintf(
+				`{"type":"error","code":500,"message":"Internal Server Error"}`,
+				owner,
+				repo,
+			)))
+			return
+		}
+		var eventsToScore []simulate.ScoringEvent
+		for _, scoringEventJson := range scoringEventJsons {
+			scoringEvent := simulate.ScoringEvent{}
+			if jsonErr := json.Unmarshal([]byte(scoringEventJson), &scoringEvent); jsonErr != nil {
+				logger.Printf("error: %s\n", jsonErr.Error())
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"type":"error","code":500,"message":"Internal Server Error"}`))
+				return
+			}
+			eventsToScore = append(eventsToScore, scoringEvent)
+		}
+		highScores := simulate.ScoreEvents(eventsToScore)
+		sort.Sort(sort.Reverse(simulate.ByScore(highScores)))
+		top := 5
+		if len(highScores) < top {
+			top = len(highScores)
+		}
+		jsonBlob, jsonErr := json.Marshal(highScores[:top])
+		if jsonErr != nil {
+			logger.Printf("error: %s\n", jsonErr.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"type":"error","code":500,"message":"Internal Server Error"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBlob)
+	}
+}
+
 func withDefaultStr(config, default_ string) string {
 	if config == "" {
 		return default_
@@ -173,5 +278,6 @@ func main() {
 	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", withMiddleware(ListOpenIssuesAndPrs(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(TopIssues(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_prs", withMiddleware(TopPrs(gh)))
+	r.HandleFunc("/gh/{owner}/{repo}/highscores/{year:[0-9]+}/{month:(0[1-9]|1[012])}", withMiddleware(HighScores(redisClient)))
 	http.ListenAndServe(":4000", r)
 }

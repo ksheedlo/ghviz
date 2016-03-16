@@ -64,6 +64,24 @@ func (a ByTimestamp) Len() int           { return len(a) }
 func (a ByTimestamp) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByTimestamp) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
 
+type ActorScore struct {
+	ActorId string
+	Score   int
+}
+
+type ByScore []ActorScore
+
+func (a ByScore) Len() int           { return len(a) }
+func (a ByScore) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByScore) Less(i, j int) bool { return a[i].Score < a[j].Score }
+
+func (acs *ActorScore) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"actor_id": acs.ActorId,
+		"score":    acs.Score,
+	})
+}
+
 type PrState int
 
 const (
@@ -122,15 +140,19 @@ func ScoreIssues(issueEvents []github.DetailedIssueEvent, readyLabel string) []S
 	return scoringEvents
 }
 
-func ScoreEvents(scoringEvents []ScoringEvent) map[string]int {
-	scores := make(map[string]int)
+func ScoreEvents(scoringEvents []ScoringEvent) []ActorScore {
+	scoreMap := make(map[string]int)
 	for _, event := range scoringEvents {
 		switch event.EventType {
 		case IssueOpened:
-			scores[event.ActorId] = scores[event.ActorId] + 200
+			scoreMap[event.ActorId] = scoreMap[event.ActorId] + 200
 		case IssueReviewed:
-			scores[event.ActorId] = scores[event.ActorId] + 1000
+			scoreMap[event.ActorId] = scoreMap[event.ActorId] + 1000
 		}
+	}
+	var scores []ActorScore
+	for actorId, score := range scoreMap {
+		scores = append(scores, ActorScore{ActorId: actorId, Score: score})
 	}
 	return scores
 }

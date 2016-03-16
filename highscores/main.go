@@ -90,7 +90,8 @@ func main() {
 		eventsToScore = append(eventsToScore, scoringEvent)
 	}
 	highScores := simulate.ScoreEvents(eventsToScore)
-	for key, value := range highScores {
-		fmt.Printf("%d %s\n", value, key)
+	sort.Sort(sort.Reverse(simulate.ByScore(highScores)))
+	for _, highScore := range highScores {
+		fmt.Printf("%d %s\n", highScore.Score, highScore.ActorId)
 	}
 }
