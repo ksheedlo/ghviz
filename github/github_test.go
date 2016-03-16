@@ -408,3 +408,103 @@ func TestTopPrs(t *testing.T) {
 		assert.True(t, issue.IsPr)
 	}
 }
+
+const prEventsJson string = `[{
+	"event": "whatever",
+	"issue": {
+		"created_at":"2016-06-07T03:26:14.739Z",
+		"closed_at":null,
+	  "events_url":"https://api.example.com/issues/6/events",
+	  "html_url":"https://api.example.com/issues/6",
+		"number":6,
+		"pull_request":{},
+	  "title":"PR 6",
+		"user":{"login":"tester1"}
+	}
+}, {
+	"actor": {"login": "tester2"},
+	"commit_id": "deadbeef",
+	"created_at": "2016-03-16T22:21:39.799Z",
+	"event": "closed",
+	"id": 87930,
+	"issue": {
+		"created_at":"2016-06-07T03:23:53.002Z",
+		"closed_at":"2016-06-07T03:25:41.469Z",
+	  "events_url":"https://api.example.com/issues/7/events",
+	  "html_url":"https://api.example.com/issues/7",
+		"number":7,
+		"pull_request":{},
+		"title":"PR 7",
+		"user":{"login":"tester1"}
+	}
+}, {
+  "actor": {"login": "tester3"},
+	"created_at": "2016-03-16T22:24:01.888Z",
+	"event": "labeled",
+	"id": 87931,
+	"issue": {
+		"created_at":"2016-08-07T03:23:53.002Z",
+		"closed_at":"2016-08-07T03:25:41.469Z",
+	  "events_url":"https://api.example.com/issues/8/events",
+	  "html_url":"https://api.example.com/issues/8",
+		"number":9,
+		"pull_request":{},
+		"title":"PR 9",
+		"user":{"login":"tester1"}
+	},
+	"label": "ready for review"
+}, {
+	"actor": {"login": "tester2"},
+	"commit_id": "deadbeef",
+	"created_at": "2016-03-16T22:21:39.799Z",
+	"event": "closed",
+	"id": 87932,
+	"issue": {
+		"created_at":"2016-06-07T03:26:14.739Z",
+		"closed_at":null,
+	  "events_url":"https://api.example.com/issues/10/events",
+	  "html_url":"https://api.example.com/issues/10",
+		"number":10,
+	  "title":"Test 10",
+		"user":{"login":"tester1"}
+	}
+}]`
+
+func assertIssueEventContents(
+	t *testing.T,
+	issueEvent DetailedIssueEvent,
+	actorId string,
+	eventType DetailedIssueEventType,
+	id string,
+	issueNumber int,
+) {
+	assert.Equal(t, issueEvent.ActorId, actorId)
+	assert.Equal(t, issueEvent.EventType, eventType)
+	assert.Equal(t, issueEvent.Id, id)
+	assert.Equal(t, issueEvent.IssueNumber, issueNumber)
+}
+
+func TestListAllPrEvents(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, prEventsJson)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+
+	prEvents, err := gh.ListAllPrEvents(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	assert.Len(t, prEvents, 5)
+
+	assertIssueEventContents(t, prEvents[0], "tester1", IssueCreated, "cr6", 6)
+	assertIssueEventContents(t, prEvents[1], "tester1", IssueCreated, "cr7", 7)
+	assertIssueEventContents(t, prEvents[2], "tester2", IssueClosed, "87930", 7)
+	assertIssueEventContents(t, prEvents[3], "tester1", IssueCreated, "cr9", 9)
+	assertIssueEventContents(t, prEvents[4], "tester3", IssueLabeled, "87931", 9)
+	assert.Equal(t, prEvents[4].Detail.(string), "ready for review")
+}

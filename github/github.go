@@ -383,24 +383,24 @@ func (gh *Client) ListAllPrEvents(
 	var detailedEvents []DetailedIssueEvent
 	knownIssues := make(map[int]Issue)
 	for _, event := range issueEvents {
+		issueNumber := int((event["issue"].(map[string]interface{}))["number"].(float64))
+		issue, issueIsKnown := knownIssues[issueNumber]
+		if !issueIsKnown {
+			issue = Issue{}
+			parseIssue(logger, &issue, event["issue"].(map[string]interface{}))
+			knownIssues[issue.Number] = issue
+			if issue.IsPr {
+				detailedEvents = append(detailedEvents, DetailedIssueEvent{
+					ActorId:     issue.Submitter,
+					CreatedAt:   issue.CreatedAt,
+					EventType:   IssueCreated,
+					Id:          fmt.Sprintf("cr%d", issue.Number),
+					IssueNumber: issue.Number,
+				})
+			}
+		}
 		if eventType, eventIsKnown := issueEventTypes[event["event"].(string)]; eventIsKnown {
 			actorId := (event["actor"].(map[string]interface{}))["login"].(string)
-			issueNumber := int((event["issue"].(map[string]interface{}))["number"].(float64))
-			issue, issueIsKnown := knownIssues[issueNumber]
-			if !issueIsKnown {
-				issue = Issue{}
-				parseIssue(logger, &issue, event["issue"].(map[string]interface{}))
-				knownIssues[issue.Number] = issue
-				if issue.IsPr {
-					detailedEvents = append(detailedEvents, DetailedIssueEvent{
-						ActorId:     issue.Submitter,
-						CreatedAt:   issue.CreatedAt,
-						EventType:   IssueCreated,
-						Id:          fmt.Sprintf("cr%d", issue.Number),
-						IssueNumber: issue.Number,
-					})
-				}
-			}
 			if issue.IsPr {
 				var detail interface{}
 				switch eventType {
