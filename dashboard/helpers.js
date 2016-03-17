@@ -1,7 +1,6 @@
 'use strict';
 
-const d3 = require('d3'),
-  $ = require('jquery');
+const d3 = require('d3');
 
 const LINE_CHART_MARGIN = {
   top: 20,
@@ -19,12 +18,12 @@ exports.drawIssues = function drawIssues({ chartLineColor,
                                            yLabel }) {
   issueCountElement.removeChild(loaderElement);
 
-  const issueCountJq = $(issueCountElement);
+  const boundingRect = issueCountElement.getBoundingClientRect();
 
   const height =
-    issueCountJq.height() - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
+    boundingRect.height - (LINE_CHART_MARGIN.top + LINE_CHART_MARGIN.bottom);
   const width =
-    issueCountJq.width() - (LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right);
+    boundingRect.width - (LINE_CHART_MARGIN.left + LINE_CHART_MARGIN.right);
 
   const t = d3.time.scale()
     .range([0, width]);

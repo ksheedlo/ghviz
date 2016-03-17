@@ -4,8 +4,7 @@ const React = require('react');
 const { Component, PropTypes } = React;
 
 const d3 = require('d3'),
-  map = require('lodash.map'),
-  $ = require('jquery');
+  map = require('lodash.map');
 
 const { listStarCounts } = require('../ops');
 
@@ -34,11 +33,10 @@ class StarChart extends Component {
 
       this.refs.placeholder.removeChild(this.refs.loader);
 
-      const starChartEl = $(this.refs.placeholder);
-
-      const height = starChartEl.height() - (LINE_CHART_MARGIN.top +
+      const starChartRect = this.refs.placeholder.getBoundingClientRect();
+      const height = starChartRect.height - (LINE_CHART_MARGIN.top +
                                              LINE_CHART_MARGIN.bottom);
-      const width = starChartEl.width() - (LINE_CHART_MARGIN.left +
+      const width = starChartRect.width - (LINE_CHART_MARGIN.left +
                                            LINE_CHART_MARGIN.right);
 
       const t = d3.time.scale()
