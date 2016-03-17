@@ -7,10 +7,12 @@ const IssueCount = require('./IssueCount');
 const PrCount = require('./PrCount');
 const StarChart = require('./StarChart');
 const StarCount = require('./StarCount');
+const TopContributors = require('./TopContributors');
 const TopIssues = require('./TopIssues');
 const TopPrs = require('./TopPrs');
 
 const { listStarCounts,
+        listTopContributors,
         listTopPrs,
         listTopIssues,
         listIssueCounts } = require('../ops');
@@ -21,9 +23,11 @@ class Dashboard extends Component {
     this.state = { loadingTopPrs: true,
                    loadingStarCount: true,
                    loadingTopIssues: true,
+                   loadingTopContributors: true,
                    openPrs: 0,
                    openIssues: 0,
                    starCount: 0,
+                   topContributors: null,
                    topPrs: null,
                    topIssues: null };
   }
@@ -63,6 +67,14 @@ class Dashboard extends Component {
                       loadingTopPrs: false,
                       openPrs: issueCounts[issueCounts.length-1].open_prs });
     });
+
+    listTopContributors({ ...queryProps, date: new Date() }).then((topContributors) => {
+      this.setState({ ...this.state,
+
+                      topContributors,
+
+                      loadingTopContributors: false });
+    });
   }
 
   renderLoader() {
@@ -71,6 +83,13 @@ class Dashboard extends Component {
         <div className="loader"/>
       </div>
     );
+  }
+
+  renderHighScores() {
+    if (this.state.loadingTopContributors) {
+      return this.renderLoader();
+    }
+    return <TopContributors contributors={this.state.topContributors} />;
   }
 
   renderStarCount() {
@@ -123,6 +142,13 @@ class Dashboard extends Component {
           </div>
           <div className="col-sm-4">
             <PrCount owner={this.props.owner} repo={this.props.repo} />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-sm-4">
+            <div className="tile">
+              {this.renderHighScores()}
+            </div>
           </div>
         </div>
       </div>

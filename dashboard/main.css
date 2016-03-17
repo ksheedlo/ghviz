@@ -67,7 +67,8 @@ body {
   font-size: 32px;
 }
 
-.top-issues__issue {
+.top-issues__issue,
+.top-contributors__contributor {
   border-bottom: 1px solid #444;
   color: #eee;
   cursor: pointer;
@@ -80,17 +81,21 @@ body {
   white-space: nowrap;
 }
 
-.top-issues__issue:hover {
+.top-issues__issue:hover,
+.top-contributors__contributor:hover {
   background-color: #999;
 }
 
+.top-contributors__contributor:hover,
+.top-contributors__contributor:focus,
 .top-issues__issue:hover,
 .top-issues__issue:focus {
   color: #eee;
   text-decoration: none;
 }
 
-.top-issues__issue:last-child {
+.top-issues__issue:last-child,
+.top-contributors__contributor:last-child {
   border-bottom: none;
 }
 
@@ -102,8 +107,12 @@ body {
   padding: 0 10px 10px 10px;
 }
 
-.template {
-  display: none;
+.top-contributors__header {
+  font-size: 56px;
+}
+
+.top-contributors__contributor {
+  font-size: 24px;
 }
 
 .loader__wrapper {

@@ -55,3 +55,18 @@ exports.listTopPrs = function listTopPrs({ owner, repo }) {
   cache.set(cacheKey, promiseForTopPrs);
   return promiseForTopPrs;
 };
+
+exports.listTopContributors = function listTopContributors({ owner, repo, date }) {
+  const year = ''+date.getFullYear();
+  const month = ('0' + (date.getMonth()+1)).slice(-2);
+  const cacheKey = `gh:${owner}:${repo}:highscores:${year}:${month}`;
+
+  let promiseForTopContributors = cache.get(cacheKey);
+  if (promiseForTopContributors) {
+    return promiseForTopContributors;
+  }
+  promiseForTopContributors = fetch(`/gh/${owner}/${repo}/highscores/${year}/${month}`)
+    .then((response) => { return response.json(); });
+  cache.set(cacheKey, promiseForTopContributors);
+  return promiseForTopContributors;
+};

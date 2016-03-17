@@ -221,7 +221,7 @@ func HighScores(redis interfaces.Rediser) func(http.ResponseWriter, *http.Reques
 		}
 		highScores := simulate.ScoreEvents(eventsToScore)
 		sort.Sort(sort.Reverse(simulate.ByScore(highScores)))
-		top := 5
+		top := 8
 		if len(highScores) < top {
 			top = len(highScores)
 		}
