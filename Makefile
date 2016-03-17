@@ -1,11 +1,8 @@
 .PHONY: all clean test
 all: js go
 
-dashboard/bundle.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
-	cd dashboard; NODE_ENV=production ./node_modules/.bin/browserify index.js -o bundle.js -t [ babelify --presets [ es2015 react stage-2 ] ]
-
-dashboard/bundle.min.js: dashboard/bundle.js
-	java -jar compiler.jar --js dashboard/bundle.js --js_output_file dashboard/bundle.min.js -O SIMPLE -W QUIET
+dashboard/bundle.min.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
+	cd dashboard; NODE_ENV=production ./node_modules/.bin/webpack --devtool source-map
 
 js: dashboard/bundle.min.js
 
@@ -21,7 +18,7 @@ services/prewarm/prewarm: prewarm/*.go github/*.go interfaces/*.go services/prew
 go: highscores/highscores services/prewarm/prewarm services/web/web
 
 clean:
-	rm dashboard/bundle.js dashboard/bundle.min.js highscores/highscores services/prewarm/prewarm services/web/web 
+	rm dashboard/bundle.min.js dashboard/*.js.map highscores/highscores services/prewarm/prewarm services/web/web
 
 test:
 	go test github.com/ksheedlo/ghviz/github \
