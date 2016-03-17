@@ -1,8 +1,10 @@
-.PHONY: all clean test
+NODE_ENV?=production
+
+.PHONY: all clean jsclean test
 all: js go
 
 dashboard/bundle.min.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
-	cd dashboard; NODE_ENV=production ./node_modules/.bin/webpack --devtool source-map
+	cd dashboard; NODE_ENV=$(NODE_ENV) ./node_modules/.bin/webpack
 
 js: dashboard/bundle.min.js
 
@@ -19,6 +21,9 @@ go: highscores/highscores services/prewarm/prewarm services/web/web
 
 clean:
 	rm dashboard/bundle.min.js dashboard/*.js.map highscores/highscores services/prewarm/prewarm services/web/web
+
+jsclean:
+	rm dashboard/bundle.min.js dashboard/*.js.map
 
 test:
 	go test github.com/ksheedlo/ghviz/github \

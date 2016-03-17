@@ -13,6 +13,7 @@
     "bootstrap": "3.3.6",
     "d3": "3.5.16",
     "jquery": "2.2.1",
+    "lodash.flatten": "4.1.0",
     "lodash.foreach": "4.1.0",
     "lodash.map": "4.2.1",
     "react": "0.14.7",
