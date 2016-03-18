@@ -21,7 +21,7 @@ class TopContributors extends Component {
         <div className="top-contributors__list">
           {map(this.props.contributors, (contributor, i) => {
             return (
-              <a className="top-contributors__contributor"
+              <a className="top-contributors__contributor" target="_blank"
                 href={'https://github.com/' + contributor.actor_id}>
                 <div className="row">
                   <div className="col-xs-2">{PLACES[i]}</div>

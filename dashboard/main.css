@@ -109,6 +109,11 @@ body {
 
 .top-contributors__header {
   font-size: 56px;
+  padding-top: 20px;
+}
+
+.top-contributors__list {
+  padding: 0 10px 10px 10px;
 }
 
 .top-contributors__contributor {
