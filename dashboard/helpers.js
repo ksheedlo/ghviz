@@ -1,6 +1,6 @@
 'use strict';
 
-const d3 = require('d3');
+import 'd3';
 
 const LINE_CHART_MARGIN = {
   top: 20,
@@ -9,13 +9,13 @@ const LINE_CHART_MARGIN = {
   left: 50
 };
 
-exports.drawIssues = function drawIssues({ chartLineColor,
-                                           issueCountElement,
-                                           issueCounts,
-                                           key,
-                                           loaderElement,
-                                           title,
-                                           yLabel }) {
+export function drawIssues({ chartLineColor,
+                             issueCountElement,
+                             issueCounts,
+                             key,
+                             loaderElement,
+                             title,
+                             yLabel }) {
   issueCountElement.removeChild(loaderElement);
 
   const boundingRect = issueCountElement.getBoundingClientRect();

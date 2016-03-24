@@ -1,15 +1,15 @@
 'use strict';
 
-const React = require('react');
+import 'd3';
+import { default as React } from 'react';
+import { default as map } from 'lodash.map';
+
+import { drawIssues } from '../helpers';
+import { listIssueCounts } from '../ops';
+
 const { Component, PropTypes } = React;
 
-const d3 = require('d3'),
-  map = require('lodash.map');
-
-const { drawIssues } = require('../helpers');
-const { listIssueCounts } = require('../ops');
-
-class IssueCount extends Component {
+export default class IssueCount extends Component {
   constructor(props) {
     super(props);
   }
@@ -57,5 +57,3 @@ IssueCount.propTypes = {
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };
-
-module.exports = IssueCount;

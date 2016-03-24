@@ -1,12 +1,12 @@
 'use strict';
 
-const React = require('react');
+import 'd3';
+import { default as map } from 'lodash.map';
+import { default as React } from 'react';
+
+import { listStarCounts } from '../ops';
+
 const { Component, PropTypes } = React;
-
-const d3 = require('d3'),
-  map = require('lodash.map');
-
-const { listStarCounts } = require('../ops');
 
 const LINE_CHART_MARGIN = {
   top: 20,
@@ -15,7 +15,7 @@ const LINE_CHART_MARGIN = {
   left: 50
 };
 
-class StarChart extends Component {
+export default class StarChart extends Component {
   constructor(props) {
     super(props);
   }
@@ -127,5 +127,3 @@ StarChart.propTypes = {
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };
-
-module.exports = StarChart;

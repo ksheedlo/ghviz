@@ -1,6 +1,4 @@
-'use strict';
-
-class Cache {
+export default class Cache {
   constructor({ maxAge }) {
     this._maxAge = maxAge;
     this._cache = {};
@@ -22,5 +20,3 @@ class Cache {
                          expires: Date.now() + this._maxAge };
   }
 }
-
-module.exports = Cache;

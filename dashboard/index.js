@@ -7,9 +7,9 @@ if (!window.Promise) {
 require('whatwg-fetch');
 
 /* eslint no-unused-vars: [2, { "varsIgnorePattern": "React" }] */
-const React = require('react');
-const ReactDOM = require('react-dom');
-const Dashboard = require('./components/Dashboard');
+import { default as React } from 'react';
+import { default as ReactDOM } from 'react-dom';
+import Dashboard from './components/Dashboard';
 
 ReactDOM.render(
   <Dashboard owner={window.GLOBALS.owner} repo={window.GLOBALS.repo} />,

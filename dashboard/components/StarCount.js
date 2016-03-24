@@ -1,6 +1,6 @@
 'use strict';
 
-const React = require('react');
+import { default as React } from 'react';
 const { Component, PropTypes } = React;
 
 function starCaption(stars) {
@@ -25,7 +25,7 @@ function starCaption(stars) {
   return 'World Domination';
 }
 
-class StarCount extends Component {
+export default class StarCount extends Component {
   constructor(props) {
     super(props);
   }
@@ -46,5 +46,3 @@ class StarCount extends Component {
 StarCount.propTypes = {
   count: PropTypes.number.isRequired
 };
-
-module.exports = StarCount;

@@ -1,13 +1,14 @@
 'use strict';
 
-const React = require('react');
+import { default as React } from 'react';
+import { default as map } from 'lodash.map';
+
 const { Component, PropTypes } = React;
-const map = require('lodash.map');
 
 const PLACES = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 const BANGS = ['!!!', '!!', '!', '', '', '', '', ''];
 
-class TopContributors extends Component {
+export default class TopContributors extends Component {
   constructor(props) {
     super(props);
   }
@@ -41,5 +42,3 @@ class TopContributors extends Component {
 TopContributors.propTypes = {
   contributors: PropTypes.array.isRequired
 };
-
-module.exports = TopContributors;

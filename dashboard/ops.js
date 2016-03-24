@@ -1,10 +1,10 @@
 'use strict';
 
-const Cache = require('./cache');
+import Cache from './cache';
 
 const cache = new Cache({ maxAge: 1000 * 60 * 5 });
 
-exports.listStarCounts = function listStarCounts({ owner, repo }) {
+export function listStarCounts({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:star_counts`;
 
   let promiseForStarCounts = cache.get(cacheKey);
@@ -17,7 +17,7 @@ exports.listStarCounts = function listStarCounts({ owner, repo }) {
   return promiseForStarCounts;
 };
 
-exports.listIssueCounts = function listStarCounts({ owner, repo }) {
+export function listIssueCounts({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:issue_counts`;
 
   let promiseForIssueCounts = cache.get(cacheKey);
@@ -30,7 +30,7 @@ exports.listIssueCounts = function listStarCounts({ owner, repo }) {
   return promiseForIssueCounts;
 };
 
-exports.listTopIssues = function listTopIssues({ owner, repo }) {
+export function listTopIssues({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:top_issues`;
 
   let promiseForTopIssues = cache.get(cacheKey);
@@ -43,7 +43,7 @@ exports.listTopIssues = function listTopIssues({ owner, repo }) {
   return promiseForTopIssues;
 };
 
-exports.listTopPrs = function listTopPrs({ owner, repo }) {
+export function listTopPrs({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:top_prs`;
 
   let promiseForTopPrs = cache.get(cacheKey);
@@ -56,7 +56,7 @@ exports.listTopPrs = function listTopPrs({ owner, repo }) {
   return promiseForTopPrs;
 };
 
-exports.listTopContributors = function listTopContributors({ owner, repo, date }) {
+export function listTopContributors({ owner, repo, date }) {
   const year = ''+date.getFullYear();
   const month = ('0' + (date.getMonth()+1)).slice(-2);
   const cacheKey = `gh:${owner}:${repo}:highscores:${year}:${month}`;

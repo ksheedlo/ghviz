@@ -1,23 +1,23 @@
 'use strict';
 
-const React = require('react');
+import { default as React } from 'react';
+import IssueCount from './IssueCount';
+import PrCount from './PrCount';
+import StarChart from './StarChart';
+import StarCount from './StarCount';
+import TopContributors from './TopContributors';
+import TopIssues from './TopIssues';
+import TopPrs from './TopPrs';
+
+import { listStarCounts,
+         listTopContributors,
+         listTopPrs,
+         listTopIssues,
+         listIssueCounts } from '../ops';
+
 const { Component, PropTypes } = React;
 
-const IssueCount = require('./IssueCount');
-const PrCount = require('./PrCount');
-const StarChart = require('./StarChart');
-const StarCount = require('./StarCount');
-const TopContributors = require('./TopContributors');
-const TopIssues = require('./TopIssues');
-const TopPrs = require('./TopPrs');
-
-const { listStarCounts,
-        listTopContributors,
-        listTopPrs,
-        listTopIssues,
-        listIssueCounts } = require('../ops');
-
-class Dashboard extends Component {
+export default class Dashboard extends Component {
   constructor(props) {
     super(props);
     this.state = { loadingTopPrs: true,
@@ -160,5 +160,3 @@ Dashboard.propTypes = {
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };
-
-module.exports = Dashboard;
