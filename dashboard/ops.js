@@ -15,7 +15,7 @@ export function listStarCounts({ owner, repo }) {
     .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForStarCounts);
   return promiseForStarCounts;
-};
+}
 
 export function listIssueCounts({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:issue_counts`;
@@ -28,7 +28,7 @@ export function listIssueCounts({ owner, repo }) {
     .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForIssueCounts);
   return promiseForIssueCounts;
-};
+}
 
 export function listTopIssues({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:top_issues`;
@@ -41,7 +41,7 @@ export function listTopIssues({ owner, repo }) {
     .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForTopIssues);
   return promiseForTopIssues;
-};
+}
 
 export function listTopPrs({ owner, repo }) {
   const cacheKey = `gh:${owner}:${repo}:top_prs`;
@@ -54,7 +54,7 @@ export function listTopPrs({ owner, repo }) {
     .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForTopPrs);
   return promiseForTopPrs;
-};
+}
 
 export function listTopContributors({ owner, repo, date }) {
   const year = ''+date.getFullYear();
@@ -69,4 +69,4 @@ export function listTopContributors({ owner, repo, date }) {
     .then((response) => { return response.json(); });
   cache.set(cacheKey, promiseForTopContributors);
   return promiseForTopContributors;
-};
+}

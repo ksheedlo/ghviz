@@ -1,9 +1,7 @@
 'use strict';
 
-import { default as React } from 'react';
-import { default as map } from 'lodash.map';
-
-const { Component, PropTypes } = React;
+import React, { Component, PropTypes } from 'react';
+import map from 'lodash.map';
 
 const PLACES = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
 const BANGS = ['!!!', '!!', '!', '', '', '', '', ''];

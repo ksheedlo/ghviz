@@ -1,6 +1,6 @@
 'use strict';
 
-import { default as React } from 'react';
+import React, { Component, PropTypes } from 'react';
 import IssueCount from './IssueCount';
 import PrCount from './PrCount';
 import StarChart from './StarChart';
@@ -14,8 +14,6 @@ import { listStarCounts,
          listTopPrs,
          listTopIssues,
          listIssueCounts } from '../ops';
-
-const { Component, PropTypes } = React;
 
 export default class Dashboard extends Component {
   constructor(props) {

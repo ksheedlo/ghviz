@@ -1,9 +1,7 @@
 'use strict';
 
-import { default as React } from 'react';
-import { default as map } from 'lodash.map';
-
-const { Component, PropTypes } = React;
+import React, { Component, PropTypes } from 'react';
+import map from 'lodash.map';
 
 export default class TopIssues extends Component {
   constructor(props) {

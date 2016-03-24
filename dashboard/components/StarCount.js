@@ -1,7 +1,6 @@
 'use strict';
 
-import { default as React } from 'react';
-const { Component, PropTypes } = React;
+import React, { Component, PropTypes } from 'react';
 
 function starCaption(stars) {
   if (stars < 10) {

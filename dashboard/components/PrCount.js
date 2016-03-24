@@ -1,13 +1,11 @@
 'use strict';
 
-import 'd3';
-import { default as map } from 'lodash.map';
-import { default as React } from 'react';
+import d3 from 'd3';
+import map from 'lodash.map';
+import React, { Component, PropTypes } from 'react';
 
 import { drawIssues } from '../helpers';
 import { listIssueCounts } from '../ops';
-
-const { Component, PropTypes } = React;
 
 export default class PrCount extends Component {
   constructor(props) {

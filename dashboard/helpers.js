@@ -1,6 +1,6 @@
 'use strict';
 
-import 'd3';
+import d3 from 'd3';
 
 const LINE_CHART_MARGIN = {
   top: 20,
@@ -91,4 +91,4 @@ export function drawIssues({ chartLineColor,
       .duration(1000)
       .ease('linear')
       .attr('stroke-dashoffset', 0);
-};
+}
