@@ -3,7 +3,7 @@ NODE_ENV?=production
 .PHONY: all clean jsclean test
 all: js go
 
-dashboard/bundle.min.js: dashboard/index.js dashboard/cache.js dashboard/helpers.js dashboard/ops.js dashboard/components/*.js
+dashboard/bundle.min.js: dashboard/index.js dashboard/api-client.js dashboard/cache.js dashboard/helpers.js dashboard/components/*.js
 	cd dashboard; NODE_ENV=$(NODE_ENV) ./node_modules/.bin/webpack
 
 js: dashboard/bundle.min.js

@@ -19,4 +19,8 @@ export default class Cache {
     this._cache[key] = { value,
                          expires: Date.now() + this._maxAge };
   }
+
+  delete(key) {
+    delete this._cache[key];
+  }
 }

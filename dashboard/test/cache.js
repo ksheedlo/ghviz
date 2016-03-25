@@ -26,4 +26,10 @@ describe('Cache', () => {
     expect(cache.get('expiring-key')).to.be.undefined;
     Date.now = oldDateNow;
   });
+
+  it('deletes an item', () => {
+    cache.set('deleted-key', 'some-nonsense');
+    cache.delete('deleted-key');
+    expect(cache.get('deleted-key')).to.be.undefined;
+  });
 });

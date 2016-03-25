@@ -10,7 +10,11 @@ module.exports = function(config) {
     concurrency: Infinity,
     exclude: [],
     frameworks: ['mocha'],
-    files: ['test/**/*.js'],
+    files: [
+      'third_party/sinon/1.17.3/sinon-1.17.3.js',
+
+      'test/**/*.js'
+    ],
     logLevel: config.LOG_INFO,
     port: 9876,
     preprocessors: {

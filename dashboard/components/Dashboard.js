@@ -9,12 +9,6 @@ import TopContributors from './TopContributors';
 import TopIssues from './TopIssues';
 import TopPrs from './TopPrs';
 
-import { listStarCounts,
-         listTopContributors,
-         listTopPrs,
-         listTopIssues,
-         listIssueCounts } from '../ops';
-
 export default class Dashboard extends Component {
   constructor(props) {
     super(props);
@@ -33,18 +27,18 @@ export default class Dashboard extends Component {
   componentWillMount() {
     const queryProps = { owner: this.props.owner, repo: this.props.repo };
 
-    listStarCounts(queryProps).then((starCounts) => {
+    this.props.apiClient.listStarCounts(queryProps).then((starCounts) => {
       this.setState({ ...this.state,
 
                       loadingStarCount: false,
                       starCount: starCounts[starCounts.length-1].stars });
     });
 
-    const issueCountsPromise = listIssueCounts(queryProps);
+    const issueCountsPromise = this.props.apiClient.listIssueCounts(queryProps);
 
     Promise.all([
       issueCountsPromise,
-      listTopIssues(queryProps)
+      this.props.apiClient.listTopIssues(queryProps)
     ]).then(([issueCounts, topIssues]) => {
       this.setState({ ...this.state,
 
@@ -56,7 +50,7 @@ export default class Dashboard extends Component {
 
     Promise.all([
       issueCountsPromise,
-      listTopPrs(queryProps)
+      this.props.apiClient.listTopPrs(queryProps)
     ]).then(([issueCounts, topPrs]) => {
       this.setState({ ...this.state,
 
@@ -66,7 +60,11 @@ export default class Dashboard extends Component {
                       openPrs: issueCounts[issueCounts.length-1].open_prs });
     });
 
-    listTopContributors({ ...queryProps, date: new Date() }).then((topContributors) => {
+    this.props.apiClient.listTopContributors({
+      ...queryProps,
+
+      date: new Date()
+    }).then((topContributors) => {
       this.setState({ ...this.state,
 
                       topContributors,
@@ -121,7 +119,9 @@ export default class Dashboard extends Component {
             </div>
           </div>
           <div className="col-sm-4">
-            <IssueCount owner={this.props.owner} repo={this.props.repo} />
+            <IssueCount apiClient={this.props.apiClient}
+              owner={this.props.owner}
+              repo={this.props.repo} />
           </div>
           <div className="col-sm-4">
             <div className="tile">
@@ -131,7 +131,9 @@ export default class Dashboard extends Component {
         </div>
         <div className="row">
           <div className="col-sm-4">
-            <StarChart owner={this.props.owner} repo={this.props.repo} />
+            <StarChart apiClient={this.props.apiClient}
+              owner={this.props.owner}
+              repo={this.props.repo} />
           </div>
           <div className="col-sm-4">
             <div className="tile">
@@ -139,7 +141,9 @@ export default class Dashboard extends Component {
             </div>
           </div>
           <div className="col-sm-4">
-            <PrCount owner={this.props.owner} repo={this.props.repo} />
+            <PrCount apiClient={this.props.apiClient}
+              owner={this.props.owner}
+              repo={this.props.repo} />
           </div>
         </div>
         <div className="row">
@@ -155,6 +159,7 @@ export default class Dashboard extends Component {
 }
 
 Dashboard.propTypes = {
+  apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };

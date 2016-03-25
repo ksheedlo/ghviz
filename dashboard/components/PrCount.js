@@ -5,7 +5,6 @@ import map from 'lodash.map';
 import React, { Component, PropTypes } from 'react';
 
 import { drawIssues } from '../helpers';
-import { listIssueCounts } from '../ops';
 
 export default class PrCount extends Component {
   constructor(props) {
@@ -13,7 +12,7 @@ export default class PrCount extends Component {
   }
 
   componentDidMount() {
-    listIssueCounts({
+    this.props.apiClient.listIssueCounts({
       owner: this.props.owner,
       repo: this.props.repo
     })
@@ -52,6 +51,7 @@ export default class PrCount extends Component {
 }
 
 PrCount.propTypes = {
+  apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };

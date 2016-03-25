@@ -4,8 +4,6 @@ import d3 from 'd3';
 import map from 'lodash.map';
 import React, { Component, PropTypes } from 'react';
 
-import { listStarCounts } from '../ops';
-
 const LINE_CHART_MARGIN = {
   top: 20,
   right: 20,
@@ -19,7 +17,7 @@ export default class StarChart extends Component {
   }
 
   componentDidMount() {
-    listStarCounts({
+    this.props.apiClient.listStarCounts({
       owner: this.props.owner,
       repo: this.props.repo
     })
@@ -122,6 +120,7 @@ export default class StarChart extends Component {
 }
 
 StarChart.propTypes = {
+  apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
   repo: PropTypes.string.isRequired
 };
