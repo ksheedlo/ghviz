@@ -13,7 +13,7 @@ import ApiClient from './api-client';
 import Cache from './cache';
 import Dashboard from './components/Dashboard';
 
-const apiClient = new ApiClient({ cache: new Cache({ maxAge: 1000 * 60 * 5 }) });
+const apiClient = new ApiClient({ cache: new Cache({ maxAge: 1000 * 60 * 4 }) });
 
 ReactDOM.render(
   <Dashboard apiClient={apiClient}

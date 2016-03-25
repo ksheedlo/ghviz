@@ -22,24 +22,42 @@ export default class Dashboard extends Component {
                    topContributors: null,
                    topPrs: null,
                    topIssues: null };
+    this.refresherTimeout = null;
   }
 
-  componentWillMount() {
+  componentDidMount() {
+    this.loadGithubInfo();
+  }
+
+  componentWillUnmount() {
+    clearTimeout(this.refresherTimeout);
+  }
+
+  loadGithubInfo() {
     const queryProps = { owner: this.props.owner, repo: this.props.repo };
 
-    this.props.apiClient.listStarCounts(queryProps).then((starCounts) => {
+    const starCountsPromise = this.props.apiClient.listStarCounts(queryProps);
+    const issueCountsPromise = this.props.apiClient.listIssueCounts(queryProps);
+    const topIssuesPromise = this.props.apiClient.listTopIssues(queryProps);
+    const topPrsPromise = this.props.apiClient.listTopPrs(queryProps);
+    const topContributorsPromise = this.props.apiClient.listTopContributors({
+      ...queryProps,
+
+      date: new Date()
+    });
+
+    starCountsPromise.then((starCounts) => {
       this.setState({ ...this.state,
 
                       loadingStarCount: false,
                       starCount: starCounts[starCounts.length-1].stars });
     });
 
-    const issueCountsPromise = this.props.apiClient.listIssueCounts(queryProps);
 
     Promise.all([
-      issueCountsPromise,
-      this.props.apiClient.listTopIssues(queryProps)
-    ]).then(([issueCounts, topIssues]) => {
+      issueCountsPromise, topIssuesPromise
+    ])
+    .then(([issueCounts, topIssues]) => {
       this.setState({ ...this.state,
 
                       topIssues,
@@ -49,9 +67,9 @@ export default class Dashboard extends Component {
     });
 
     Promise.all([
-      issueCountsPromise,
-      this.props.apiClient.listTopPrs(queryProps)
-    ]).then(([issueCounts, topPrs]) => {
+      issueCountsPromise, topPrsPromise
+    ])
+    .then(([issueCounts, topPrs]) => {
       this.setState({ ...this.state,
 
                       topPrs,
@@ -60,16 +78,26 @@ export default class Dashboard extends Component {
                       openPrs: issueCounts[issueCounts.length-1].open_prs });
     });
 
-    this.props.apiClient.listTopContributors({
-      ...queryProps,
-
-      date: new Date()
-    }).then((topContributors) => {
+    topContributorsPromise.then((topContributors) => {
       this.setState({ ...this.state,
 
                       topContributors,
 
                       loadingTopContributors: false });
+    });
+
+    Promise.all([
+      starCountsPromise,
+      issueCountsPromise,
+      topIssuesPromise,
+      topPrsPromise,
+      topContributorsPromise
+    ])
+    .catch(() => { /* suppress errors */ })
+    .then(() => {
+      this.refresherTimeout = setTimeout(() => {
+        this.loadGithubInfo();
+      }, 1000 * 60 * 5);
     });
   }
 
