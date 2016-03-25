@@ -5,6 +5,11 @@
     "es6": true
   },
   "extends": ["eslint:recommended", "plugin:react/recommended"],
+  "globals": {
+    "describe": true,
+    "beforeEach": true,
+    "it": true
+  },
   "parserOptions": {
     "ecmaFeatures": {
       "experimentalObjectRestSpread": true,

@@ -1,10 +1,10 @@
 'use strict';
 
-const bluebird = require('bluebird');
+import bluebird from 'bluebird';
 if (!window.Promise) {
   window.Promise = bluebird;
 }
-require('whatwg-fetch');
+import 'whatwg-fetch';
 
 /* eslint no-unused-vars: [2, { "varsIgnorePattern": "React" }] */
 import React from 'react';

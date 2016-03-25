@@ -30,4 +30,4 @@ test:
 		github.com/ksheedlo/ghviz/models \
 		github.com/ksheedlo/ghviz/simulate && \
 	cd dashboard && \
-	npm run lint
+	NODE_ENV=development npm run test
