@@ -200,11 +200,7 @@ func HighScores(redis interfaces.Rediser) func(http.ResponseWriter, *http.Reques
 			logger.Printf("ERROR: %s\n", redisErr.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(fmt.Sprintf(
-				`{"type":"error","code":500,"message":"Internal Server Error"}`,
-				owner,
-				repo,
-			)))
+			w.Write([]byte(`{"type":"error","code":500,"message":"Internal Server Error"}`))
 			return
 		}
 		var eventsToScore []simulate.ScoringEvent

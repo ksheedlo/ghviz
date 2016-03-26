@@ -23,6 +23,15 @@ jsclean:
 	rm dashboard/bundle.min.js dashboard/*.js.map
 
 test:
+	go vet github.com/ksheedlo/ghviz/errors \
+		github.com/ksheedlo/ghviz/github \
+		github.com/ksheedlo/ghviz/interfaces \
+		github.com/ksheedlo/ghviz/middleware \
+		github.com/ksheedlo/ghviz/models \
+		github.com/ksheedlo/ghviz/prewarm \
+		github.com/ksheedlo/ghviz/services/prewarm \
+		github.com/ksheedlo/ghviz/services/web \
+		github.com/ksheedlo/ghviz/simulate && \
 	go test -cover github.com/ksheedlo/ghviz/github \
 		github.com/ksheedlo/ghviz/models \
 		github.com/ksheedlo/ghviz/simulate && \
