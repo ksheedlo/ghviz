@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ksheedlo/ghviz/models"
+	"github.com/ksheedlo/ghviz/github"
 )
 
 type StarCount struct {
@@ -19,7 +19,7 @@ func (sc *StarCount) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func StarCounts(starEvents []models.StarEvent) []StarCount {
+func StarCounts(starEvents []github.StarEvent) []StarCount {
 	starCounts := make([]StarCount, len(starEvents))
 	for i := 0; i < len(starEvents); i++ {
 		starCounts[i].Stars = i + 1

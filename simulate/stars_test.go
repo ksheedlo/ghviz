@@ -6,22 +6,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ksheedlo/ghviz/models"
+	"github.com/ksheedlo/ghviz/github"
 	"github.com/stretchr/testify/assert"
 )
-
-const starsJson string = `[
-{"starred_at":"2016-03-07T03:25:41.469Z"},
-{"starred_at":"2016-03-07T03:23:53.002Z"},
-{"starred_at":"2016-03-07T03:26:14.739Z"}]`
 
 func TestStarCounts(t *testing.T) {
 	t.Parallel()
 
-	stars := make([]map[string]interface{}, 3)
-	json.Unmarshal([]byte(starsJson), &stars)
-	starEvents, err := models.StarEventsFromApi(stars)
-	assert.NoError(t, err)
+	starEvents := []github.StarEvent{
+		github.StarEvent{StarredAt: time.Unix(1, 0)},
+		github.StarEvent{StarredAt: time.Unix(2, 0)},
+		github.StarEvent{StarredAt: time.Unix(3, 0)},
+	}
 	starCounts := StarCounts(starEvents)
 
 	for i := 0; (i + 1) < len(starCounts); i++ {
