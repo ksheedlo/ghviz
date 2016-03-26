@@ -11,16 +11,13 @@ js: dashboard/bundle.min.js
 services/web/web: errors/*.go github/*.go interfaces/*.go middleware/*.go models/*.go services/web/*.go simulate/*.go
 	cd services/web; go build
 
-highscores/highscores: highscores/main.go github/*.go simulate/*.go
-	cd highscores; go build
-
 services/prewarm/prewarm: prewarm/*.go github/*.go interfaces/*.go services/prewarm/*.go simulate/*.go
 	cd services/prewarm; go build
 
-go: highscores/highscores services/prewarm/prewarm services/web/web
+go: services/prewarm/prewarm services/web/web
 
 clean:
-	rm dashboard/bundle.min.js dashboard/*.js.map highscores/highscores services/prewarm/prewarm services/web/web
+	rm dashboard/bundle.min.js dashboard/*.js.map services/prewarm/prewarm services/web/web
 
 jsclean:
 	rm dashboard/bundle.min.js dashboard/*.js.map
