@@ -260,7 +260,7 @@ func TestRedisStaleCacheHit(t *testing.T) {
 
 	cacheKey := "github:repo:lodash:lodash:issues"
 	redisMock.On("Get", cacheKey).Return(
-		fmt.Sprintf("%d|meh", time.Now().Add(time.Duration(-6)*time.Minute)),
+		fmt.Sprintf("%d|meh", time.Now().Add(time.Duration(-6)*time.Minute).Unix()),
 		nil,
 	)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
@@ -290,6 +290,64 @@ func TestBadRedisValues(t *testing.T) {
 
 	cacheKey := "github:repo:lodash:lodash:issues"
 	redisMock.On("Get", cacheKey).Return("chicken", nil)
+	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
+
+	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	assert.Equal(t, len(allIssues), 4)
+	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
+	redisMock.AssertExpectations(t)
+}
+
+func TestBadRedisTimestamp(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesJson)
+	}))
+	defer ts.Close()
+
+	redisMock := &interfaces.MockRediser{}
+	gh := NewClient(&Options{
+		BaseUrl:      ts.URL,
+		MaxStaleness: 5,
+		RedisClient:  redisMock,
+		Token:        "deadbeef",
+	})
+
+	cacheKey := "github:repo:lodash:lodash:issues"
+	redisMock.On("Get", cacheKey).Return("fish|chicken", nil)
+	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
+
+	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	assert.Equal(t, len(allIssues), 4)
+	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
+	redisMock.AssertExpectations(t)
+}
+
+func TestBadRedisJSON(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesJson)
+	}))
+	defer ts.Close()
+
+	redisMock := &interfaces.MockRediser{}
+	gh := NewClient(&Options{
+		BaseUrl:      ts.URL,
+		MaxStaleness: 5,
+		RedisClient:  redisMock,
+		Token:        "deadbeef",
+	})
+
+	brokenIssueJson := `{"title":"Test Issue`
+	cacheKey := "github:repo:lodash:lodash:issues"
+	redisMock.On("Get", cacheKey).Return(
+		fmt.Sprintf("%d|%s", time.Now().Unix(), brokenIssueJson),
+		nil,
+	)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
 	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
