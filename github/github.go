@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ksheedlo/ghviz/errors"
@@ -16,16 +18,18 @@ import (
 var LINK_NEXT_REGEX *regexp.Regexp = regexp.MustCompile("<([^>]+)>; rel=\"next\"")
 
 type Client struct {
-	baseUrl     string
-	httpClient  *http.Client
-	redisClient interfaces.Rediser
-	token       string
+	baseUrl      string
+	httpClient   *http.Client
+	maxStaleness int
+	redisClient  interfaces.Rediser
+	token        string
 }
 
 type Options struct {
-	BaseUrl     string
-	RedisClient interfaces.Rediser
-	Token       string
+	BaseUrl      string
+	MaxStaleness int
+	RedisClient  interfaces.Rediser
+	Token        string
 }
 
 type Issue struct {
@@ -120,6 +124,7 @@ func NewClient(options *Options) *Client {
 	client := &Client{}
 	client.httpClient = httpClient
 	client.baseUrl = withDefaultBaseUrl(options.BaseUrl)
+	client.maxStaleness = options.MaxStaleness
 	client.redisClient = options.RedisClient
 	client.token = options.Token
 	return client
@@ -184,7 +189,25 @@ func stargazersKey(owner, repo string) string {
 	return fmt.Sprintf("github:repo:%s:%s:stargazers", owner, repo)
 }
 
-func (gh *Client) redisWrap(
+func parseRedisValues(cacheKey, cachedValues string) (time.Time, []byte, error) {
+	idx := strings.Index(cachedValues, "|")
+	if idx == -1 {
+		return time.Unix(0, 0), nil, &errors.BadRedisValues{CacheKey: cacheKey}
+	}
+	unixSeconds, err := strconv.ParseInt(cachedValues[:idx], 10, 64)
+	if err != nil {
+		return time.Unix(0, 0), nil, err
+	}
+	jsonBytes := []byte(cachedValues[(idx + 1):])
+	return time.Unix(unixSeconds, 0), jsonBytes, nil
+}
+
+func isStale(gh *Client, timeSubmitted time.Time) bool {
+	return time.Since(timeSubmitted) > time.Duration(gh.maxStaleness)*time.Minute
+}
+
+func redisWrap(
+	gh *Client,
 	cacheKey string,
 	pluralType string,
 	logger *log.Logger,
@@ -199,17 +222,30 @@ func (gh *Client) redisWrap(
 				pluralType,
 			)
 		} else {
-			var items []map[string]interface{}
-			err := json.Unmarshal([]byte(cachedItems), &items)
+			timeSubmitted, jsonBytes, err := parseRedisValues(cacheKey, cachedItems)
 			if err != nil {
 				logger.Printf(
-					"Key %s was found in Redis, but a JSON decoding error occurred: %s\n",
-					cacheKey,
+					"Failed to parse Redis values because of an error: %s, attempting to fetch from Github.\n",
 					err.Error(),
 				)
+			} else if isStale(gh, timeSubmitted) {
+				logger.Printf(
+					"Key %s was found stale, attempting to fetch from Github.\n",
+					cacheKey,
+				)
 			} else {
-				logger.Printf("Found %s in Redis.\n", cacheKey)
-				return items, nil
+				var items []map[string]interface{}
+				err := json.Unmarshal(jsonBytes, &items)
+				if err != nil {
+					logger.Printf(
+						"Key %s was found in Redis, but a JSON decoding error occurred: %s\n",
+						cacheKey,
+						err.Error(),
+					)
+				} else {
+					logger.Printf("Found %s in Redis.\n", cacheKey)
+					return items, nil
+				}
 			}
 		}
 	}
@@ -227,15 +263,19 @@ func (gh *Client) redisWrap(
 		logger.Printf("JSON encoding error occurred: %s\n", jsonErr.Error())
 		return items, nil
 	}
-	duration := (time.Duration(10) * time.Minute)
-	if redisErr := gh.redisClient.Set(cacheKey, string(jsonBlob), duration); redisErr != nil {
+	if redisErr := gh.redisClient.Set(
+		cacheKey,
+		fmt.Sprintf("%d|%s", time.Now().Unix(), string(jsonBlob)),
+		time.Duration(0),
+	); redisErr != nil {
 		logger.Printf("Redis store error occurred: %s\n", redisErr.Error())
 	}
 	return items, nil
 }
 
 func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
-	return gh.redisWrap(
+	return redisWrap(
+		gh,
 		stargazersKey(owner, repo),
 		"stargazers",
 		logger,
@@ -337,7 +377,8 @@ func parseIssues(logger *log.Logger, rawIssues []map[string]interface{}) ([]Issu
 }
 
 func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
-	rawIssues, err := gh.redisWrap(
+	rawIssues, err := redisWrap(
+		gh,
 		fmt.Sprintf("github:repo:%s:%s:issues", owner, repo),
 		"issues",
 		logger,
@@ -438,7 +479,8 @@ func (gh *Client) filterTopIssues(
 	limit int,
 	filterFn func(map[string]interface{}) bool,
 ) ([]Issue, *errors.HttpError) {
-	rawIssues, err := gh.redisWrap(
+	rawIssues, err := redisWrap(
+		gh,
 		cacheKey,
 		pluralType,
 		logger,

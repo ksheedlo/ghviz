@@ -260,8 +260,9 @@ func main() {
 	}
 
 	gh := github.NewClient(&github.Options{
-		RedisClient: redisClient,
-		Token:       os.Getenv("GITHUB_TOKEN"),
+		MaxStaleness: 5,
+		RedisClient:  redisClient,
+		Token:        os.Getenv("GITHUB_TOKEN"),
 	})
 	withMiddleware := middleware.Compose(
 		middleware.AddResponseId,
