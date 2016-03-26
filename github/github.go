@@ -385,6 +385,10 @@ func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *
 	return parseIssues(logger, rawIssues)
 }
 
+type ListAllPrEventser interface {
+	ListAllPrEvents(*log.Logger, string, string) ([]DetailedIssueEvent, *errors.HttpError)
+}
+
 func (gh *Client) ListAllPrEvents(
 	logger *log.Logger,
 	owner, repo string,

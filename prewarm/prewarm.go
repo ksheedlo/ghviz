@@ -1,23 +1,25 @@
 package prewarm
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 	"sort"
 	"time"
 
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/simulate"
+
+	"github.com/jonboulle/clockwork"
 )
 
 func PrewarmHighScores(
 	logger *log.Logger,
-	gh *github.Client,
+	gh github.ListAllPrEventser,
 	redis interfaces.Rediser,
+	clock clockwork.Clock,
+	randomTagger interfaces.RandomTagger,
 	owner, repo string,
 ) error {
 	allPrEvents, httpErr := gh.ListAllPrEvents(logger, owner, repo)
@@ -30,23 +32,19 @@ func PrewarmHighScores(
 	var members []interfaces.ZZ
 	for _, event := range scoringEvents {
 		timestamp := float64(event.Timestamp.Unix())
-		if jsonBlob, jsonErr := json.Marshal(&event); jsonErr != nil {
-			logger.Printf(
-				"ERROR: %s; a scoring event will be dropped.",
-				jsonErr.Error(),
-			)
-		} else {
-			members = append(members, interfaces.ZZ{
-				Score:  timestamp,
-				Member: jsonBlob,
-			})
-		}
+		// Ignore errors from json.Marshal because we control the serializing
+		// routine for ScoringEvents. It should not be possible for an error
+		// to occur here.
+		jsonBlob, _ := json.Marshal(&event)
+		members = append(members, interfaces.ZZ{
+			Score:  timestamp,
+			Member: jsonBlob,
+		})
 	}
-	nextEventSetIdInt, err := rand.Int(rand.Reader, big.NewInt(1<<62))
+	nextEventSetId, err := randomTagger.RandomTag()
 	if err != nil {
 		return err
 	}
-	nextEventSetId := nextEventSetIdInt.Text(36)
 	eventSetCacheKey := fmt.Sprintf("gh:repos:%s:%s:issue_events:%s", owner, repo, nextEventSetId)
 	if _, err := redis.ZAdd(eventSetCacheKey, members...); err != nil {
 		return err
@@ -56,8 +54,8 @@ func PrewarmHighScores(
 	if err := redis.Set(eventSetIdPtr, nextEventSetId, time.Duration(0)); err != nil {
 		return err
 	}
-	if currentEventSetErr != nil && currentEventSetId != "" {
-		time.Sleep(5 * time.Second)
+	if currentEventSetErr == nil && currentEventSetId != "" {
+		clock.Sleep(5 * time.Second)
 		if _, err := redis.Del(
 			fmt.Sprintf("gh:repos:%s:%s:issue_events:%s", owner, repo, currentEventSetId),
 		); err != nil {

@@ -34,6 +34,7 @@ test:
 		github.com/ksheedlo/ghviz/simulate && \
 	go test -cover github.com/ksheedlo/ghviz/github \
 		github.com/ksheedlo/ghviz/models \
+		github.com/ksheedlo/ghviz/prewarm \
 		github.com/ksheedlo/ghviz/simulate && \
 	cd dashboard && \
 	NODE_ENV=development npm run test

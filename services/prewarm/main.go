@@ -9,6 +9,8 @@ import (
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/prewarm"
+
+	"github.com/jonboulle/clockwork"
 	"gopkg.in/redis.v3"
 )
 
@@ -63,7 +65,15 @@ func main() {
 	if *prewarmHighScores {
 		pendingTasks++
 		go func() {
-			if err := prewarm.PrewarmHighScores(logger, gh, redisClient, owner, repo); err != nil {
+			if err := prewarm.PrewarmHighScores(
+				logger,
+				gh,
+				redisClient,
+				clockwork.NewRealClock(),
+				interfaces.RandomTag,
+				owner,
+				repo,
+			); err != nil {
 				logger.Printf("ERROR: %s\n", err.Error())
 				errChan <- 1
 			} else {
