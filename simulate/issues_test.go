@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -8,13 +9,6 @@ import (
 	"github.com/ksheedlo/ghviz/models"
 	"github.com/stretchr/testify/assert"
 )
-
-const issuesJson string = `[
-{"created_at":"2016-03-07T03:26:14.739Z"},
-{"created_at":"2016-03-07T03:23:53.002Z","closed_at":"2016-03-07T03:25:41.469Z"},
-{"created_at":"2016-03-07T03:46:36.717Z","closed_at":"2016-03-07T03:46:55.993Z",
- "pull_request":{}},
-{"created_at":"2016-03-07T03:46:46.458Z","pull_request":{}}]`
 
 func TestOpenIssueAndPrCounts(t *testing.T) {
 	t.Parallel()
@@ -66,7 +60,24 @@ func TestOpenIssueAndPrCounts(t *testing.T) {
 	}
 
 	for i := 0; i < len(issueCounts); i++ {
-		assert.Equal(t, issueCounts[i].OpenIssues, expectedIssueCounts[i])
-		assert.Equal(t, issueCounts[i].OpenPrs, expectedPrCounts[i])
+		assert.Equal(t, expectedIssueCounts[i], issueCounts[i].OpenIssues)
+		assert.Equal(t, expectedPrCounts[i], issueCounts[i].OpenPrs)
 	}
+}
+
+func TestOpenIssueToJSON(t *testing.T) {
+	t.Parallel()
+
+	issueCount := OpenIssueAndPrCount{
+		OpenIssues: 2,
+		OpenPrs:    5,
+		Timestamp:  time.Unix(1458966366, 892000000).UTC(),
+	}
+	jsonBytes, err := json.Marshal(&issueCount)
+	assert.NoError(t, err)
+	var issueMap map[string]interface{}
+	assert.NoError(t, json.Unmarshal(jsonBytes, &issueMap))
+	assert.Equal(t, 2.0, issueMap["open_issues"].(float64))
+	assert.Equal(t, 5.0, issueMap["open_prs"].(float64))
+	assert.Equal(t, "2016-03-26T04:26:06.892Z", issueMap["timestamp"].(string))
 }

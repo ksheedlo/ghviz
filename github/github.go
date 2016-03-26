@@ -76,16 +76,6 @@ var issueEventTypes map[string]DetailedIssueEventType = map[string]DetailedIssue
 	"unlabeled": IssueUnlabeled,
 }
 
-var invertedIssueEventTypes map[DetailedIssueEventType]string = (func(
-	types map[string]DetailedIssueEventType,
-) map[DetailedIssueEventType]string {
-	invertedMap := make(map[DetailedIssueEventType]string)
-	for key, value := range types {
-		invertedMap[value] = key
-	}
-	return invertedMap
-})(issueEventTypes)
-
 type DetailedIssueEvent struct {
 	ActorId     string
 	CreatedAt   time.Time
@@ -100,17 +90,6 @@ type ByCreatedAt []DetailedIssueEvent
 func (a ByCreatedAt) Len() int           { return len(a) }
 func (a ByCreatedAt) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByCreatedAt) Less(i, j int) bool { return a[i].CreatedAt.Before(a[j].CreatedAt) }
-
-func (dev *DetailedIssueEvent) MarshalJSON() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"actor_id":     dev.ActorId,
-		"created_at":   dev.CreatedAt,
-		"detail":       dev.Detail,
-		"event_type":   invertedIssueEventTypes[dev.EventType],
-		"id":           dev.Id,
-		"issue_number": dev.IssueNumber,
-	})
-}
 
 func withDefaultBaseUrl(baseUrl string) string {
 	if baseUrl == "" {
@@ -131,11 +110,9 @@ func NewClient(options *Options) *Client {
 }
 
 func (gh *Client) sendGithubRequest(logger *log.Logger, url, mediaType string) (*http.Response, *errors.HttpError) {
-	rr, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		logger.Printf("%s\n", err.Error())
-		return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
-	}
+	// Suppress errors from http.NewRequest. This can only error if the URL or
+	// HTTP method are invalid, and we control both in this module.
+	rr, _ := http.NewRequest("GET", url, nil)
 	rr.Header.Add("Authorization", fmt.Sprintf("token %s", gh.token))
 	rr.Header.Add("Accept", mediaType)
 	startTime := time.Now()

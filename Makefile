@@ -23,7 +23,7 @@ jsclean:
 	rm dashboard/bundle.min.js dashboard/*.js.map
 
 test:
-	go test github.com/ksheedlo/ghviz/github \
+	go test -cover github.com/ksheedlo/ghviz/github \
 		github.com/ksheedlo/ghviz/models \
 		github.com/ksheedlo/ghviz/simulate && \
 	cd dashboard && \

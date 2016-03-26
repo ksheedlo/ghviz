@@ -1,6 +1,7 @@
 package simulate
 
 import (
+	"encoding/json"
 	"sort"
 	"testing"
 	"time"
@@ -220,4 +221,59 @@ func TestScoreEvents(t *testing.T) {
 	assert.Equal(t, scores[0].Score, 200)
 	assert.Equal(t, scores[1].ActorId, "Tester2")
 	assert.Equal(t, scores[1].Score, 1000)
+}
+
+func TestMarshalScoringEvent(t *testing.T) {
+	t.Parallel()
+
+	sev := ScoringEvent{
+		ActorId:   "tester1",
+		EventType: IssueReviewed,
+		Timestamp: time.Unix(1458966366, 892000000).UTC(),
+	}
+	jsonBytes, err := json.Marshal(&sev)
+	assert.NoError(t, err)
+	var sevMap map[string]interface{}
+	assert.NoError(t, json.Unmarshal(jsonBytes, &sevMap))
+	assert.Equal(t, "tester1", sevMap["actor_id"].(string))
+	assert.Equal(t, "2016-03-26T04:26:06.892Z", sevMap["timestamp"].(string))
+	var copySev ScoringEvent
+	assert.NoError(t, json.Unmarshal(jsonBytes, &copySev))
+	assert.Equal(t, "tester1", copySev.ActorId)
+	assert.Equal(t, IssueReviewed, copySev.EventType)
+	assert.Equal(t, sev.Timestamp, copySev.Timestamp)
+}
+
+func TestUnmarshalBadJSON(t *testing.T) {
+	t.Parallel()
+
+	var sev ScoringEvent
+	assert.Error(t, json.Unmarshal([]byte(`{"actor_id":"FooBarso`), &sev))
+}
+
+const scoringEventBadTimestamp string = `{
+	"actor_id": "FooBarson",
+	"timestamp": "fish",
+	"event_type": 0
+}`
+
+func TestUnmarshalBadTimestamp(t *testing.T) {
+	t.Parallel()
+
+	var sev ScoringEvent
+	assert.Error(t, json.Unmarshal([]byte(scoringEventBadTimestamp), &sev))
+}
+
+func TestMarshalActorScore(t *testing.T) {
+	t.Parallel()
+
+	jsonBytes, err := json.Marshal(&ActorScore{
+		ActorId: "panda99",
+		Score:   1337,
+	})
+	assert.NoError(t, err)
+	var actorScore map[string]interface{}
+	assert.NoError(t, json.Unmarshal(jsonBytes, &actorScore))
+	assert.Equal(t, "panda99", actorScore["actor_id"].(string))
+	assert.Equal(t, 1337.0, actorScore["score"].(float64))
 }

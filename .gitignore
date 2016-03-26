@@ -1,6 +1,5 @@
 dashboard/node_modules/
 dashboard/bundle.min.js
 dashboard/*.js.map
-highscores/highscores
 services/prewarm/prewarm
 services/web/web

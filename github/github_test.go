@@ -1,6 +1,7 @@
 package github
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -262,6 +263,33 @@ func TestRedisStaleCacheHit(t *testing.T) {
 		fmt.Sprintf("%d|meh", time.Now().Add(time.Duration(-6)*time.Minute)),
 		nil,
 	)
+	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
+
+	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.NoError(t, err)
+	assert.Equal(t, len(allIssues), 4)
+	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
+	redisMock.AssertExpectations(t)
+}
+
+func TestBadRedisValues(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, issuesJson)
+	}))
+	defer ts.Close()
+
+	redisMock := &interfaces.MockRediser{}
+	gh := NewClient(&Options{
+		BaseUrl:      ts.URL,
+		MaxStaleness: 5,
+		RedisClient:  redisMock,
+		Token:        "deadbeef",
+	})
+
+	cacheKey := "github:repo:lodash:lodash:issues"
+	redisMock.On("Get", cacheKey).Return("chicken", nil)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
 	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
@@ -542,4 +570,56 @@ func TestListAllPrEvents(t *testing.T) {
 	assertIssueEventContents(t, prEvents[3], "tester1", IssueCreated, "cr9", 9)
 	assertIssueEventContents(t, prEvents[4], "tester3", IssueLabeled, "87931", 9)
 	assert.Equal(t, prEvents[4].Detail.(string), "ready for review")
+}
+
+func TestGithubError(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Trigger a low-level HTTP error by causing a redirect loop.
+		http.Redirect(w, r, r.URL.String(), http.StatusFound)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+
+	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	assert.Error(t, err)
+}
+
+func TestMarshalIssue(t *testing.T) {
+	t.Parallel()
+
+	jsonBytes, err := json.Marshal(&Issue{
+		CreatedAt: time.Unix(1458966366, 892000000).UTC(),
+		ClosedAt:  time.Unix(1458969687, 787000000).UTC(),
+		EventsUrl: "https://api.github.com/repos/88/issues/99/events",
+		HtmlUrl:   "https://github.com/lodash/lodash/issues/99",
+		IsClosed:  true,
+		IsPr:      false,
+		Number:    99,
+		Submitter: "tester1",
+		Title:     "Test Issue",
+	})
+	assert.NoError(t, err)
+	var issue map[string]interface{}
+	assert.NoError(t, json.Unmarshal(jsonBytes, &issue))
+	assert.Equal(t, "2016-03-26T04:26:06.892Z", issue["created_at"].(string))
+	assert.Equal(t, "2016-03-26T05:21:27.787Z", issue["closed_at"].(string))
+	assert.Equal(t,
+		"https://api.github.com/repos/88/issues/99/events",
+		issue["events_url"].(string),
+	)
+	assert.Equal(t,
+		"https://github.com/lodash/lodash/issues/99",
+		issue["html_url"].(string),
+	)
+	assert.Equal(t, true, issue["is_closed"].(bool))
+	assert.Equal(t, false, issue["is_pr"].(bool))
+	assert.Equal(t, 99.0, issue["number"].(float64))
+	assert.Equal(t, "tester1", issue["submitter"].(string))
+	assert.Equal(t, "Test Issue", issue["title"].(string))
 }
