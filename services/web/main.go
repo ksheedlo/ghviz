@@ -24,19 +24,7 @@ import (
 	"github.com/ksheedlo/ghviz/simulate"
 )
 
-type IndexParams struct {
-	Owner string
-	Repo  string
-}
-
-var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
-
-func ServeIndex(params *IndexParams) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		IndexTpl.Execute(w, params)
-	}
-}
+var indexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
 
 func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -173,10 +161,10 @@ func main() {
 		middleware.LogRequest,
 		middleware.Gzip,
 	)
-	r.HandleFunc("/", withMiddleware(ServeIndex(&IndexParams{
+	r.HandleFunc("/", withMiddleware(routes.ServeIndex(&routes.IndexParams{
 		Owner: os.Getenv("GHVIZ_OWNER"),
 		Repo:  os.Getenv("GHVIZ_REPO"),
-	})))
+	}, indexTpl)))
 	r.HandleFunc("/dashboard/{path:.*}", withMiddleware(ServeStaticFile))
 	r.HandleFunc(
 		"/gh/{owner}/{repo}/star_counts",
