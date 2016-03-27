@@ -50,7 +50,7 @@ func main() {
 	})
 	withMiddleware := middleware.Compose(
 		middleware.AddResponseId,
-		middleware.AddLogger,
+		middleware.AddLogger(os.Stdout),
 		middleware.LogRequest,
 		middleware.Gzip,
 	)

@@ -33,6 +33,7 @@ test:
 		github.com/ksheedlo/ghviz/services/web \
 		github.com/ksheedlo/ghviz/simulate && \
 	go test -cover github.com/ksheedlo/ghviz/github \
+		github.com/ksheedlo/ghviz/middleware \
 		github.com/ksheedlo/ghviz/models \
 		github.com/ksheedlo/ghviz/prewarm \
 		github.com/ksheedlo/ghviz/routes \
