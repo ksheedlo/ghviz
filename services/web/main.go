@@ -20,7 +20,6 @@ import (
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/middleware"
-	"github.com/ksheedlo/ghviz/models"
 	"github.com/ksheedlo/ghviz/routes"
 	"github.com/ksheedlo/ghviz/simulate"
 )
@@ -28,28 +27,6 @@ import (
 type IndexParams struct {
 	Owner string
 	Repo  string
-}
-
-func ListOpenIssuesAndPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
-		vars := mux.Vars(r)
-		allIssues, err := gh.ListIssues(logger, vars["owner"], vars["repo"])
-		if err != nil {
-			w.WriteHeader(err.Status)
-			w.Write([]byte(fmt.Sprintf("%s\n", err.Message)))
-			return
-		}
-		events := models.IssueEventsFromApi(allIssues)
-		jsonBlob, jsonErr := json.Marshal(simulate.OpenIssueAndPrCounts(events))
-		if jsonErr != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBlob)
-	}
 }
 
 var IndexTpl *template.Template = template.Must(template.ParseFiles("index.tpl.html"))
@@ -249,7 +226,10 @@ func main() {
 		"/gh/{owner}/{repo}/star_counts",
 		withMiddleware(routes.ListStarCounts(gh)),
 	)
-	r.HandleFunc("/gh/{owner}/{repo}/issue_counts", withMiddleware(ListOpenIssuesAndPrs(gh)))
+	r.HandleFunc(
+		"/gh/{owner}/{repo}/issue_counts",
+		withMiddleware(routes.ListOpenIssuesAndPrs(gh)),
+	)
 	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(TopIssues(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_prs", withMiddleware(TopPrs(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/highscores/{year:[0-9]+}/{month:(0[1-9]|1[012])}", withMiddleware(HighScores(redisClient)))

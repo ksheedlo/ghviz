@@ -389,6 +389,10 @@ func parseIssues(logger *log.Logger, rawIssues []map[string]interface{}) ([]Issu
 	return issues, nil
 }
 
+type ListIssueser interface {
+	ListIssues(*log.Logger, string, string) ([]Issue, *errors.HttpError)
+}
+
 func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
 	rawIssues, err := redisWrap(
 		gh,

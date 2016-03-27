@@ -103,3 +103,94 @@ func TestListStarCountsError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Equal(t, "Github API Error\n", w.Body.String())
 }
+
+type MockListIssueser struct {
+	mock.Mock
+}
+
+func (m *MockListIssueser) ListIssues(
+	logger *log.Logger,
+	owner, repo string,
+) ([]github.Issue, *errors.HttpError) {
+	args := m.Called(logger, owner, repo)
+	var issues []github.Issue = nil
+	var err *errors.HttpError = nil
+	issuesArg := args.Get(0)
+	if issuesArg != nil {
+		issues = issuesArg.([]github.Issue)
+	}
+	errArg := args.Get(1)
+	if errArg != nil {
+		err = errArg.(*errors.HttpError)
+	}
+	return issues, err
+}
+
+func TestListOpenIssuesAndPrs(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	ghMock := &MockListIssueser{}
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
+	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	ghMock.
+		On("ListIssues", logger, "tester1", "coolrepo").
+		Return([]github.Issue{
+			github.Issue{CreatedAt: time.Unix(3, 0), IsPr: false, IsClosed: false},
+			github.Issue{
+				CreatedAt: time.Unix(1, 0),
+				IsPr:      false,
+				IsClosed:  true,
+				ClosedAt:  time.Unix(2, 0),
+			},
+			github.Issue{
+				CreatedAt: time.Unix(4, 0),
+				IsPr:      true,
+				IsClosed:  true,
+				ClosedAt:  time.Unix(6, 0),
+			},
+			github.Issue{CreatedAt: time.Unix(5, 0), IsPr: true, IsClosed: false},
+		}, nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	ghMock.AssertExpectations(t)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Len(t, bodyContents, 6)
+	assert.Equal(t, 1.0, bodyContents[len(bodyContents)-1]["open_prs"].(float64))
+	assert.Equal(t, 1.0, bodyContents[len(bodyContents)-1]["open_issues"].(float64))
+}
+
+func TestListIssuesError(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	ghMock := &MockListIssueser{}
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
+	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	ghMock.
+		On("ListIssues", logger, "tester1", "coolrepo").
+		Return(nil, &errors.HttpError{
+			Message: "Github API Error",
+			Status:  http.StatusInternalServerError,
+		})
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	ghMock.AssertExpectations(t)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, "Github API Error\n", w.Body.String())
+}
