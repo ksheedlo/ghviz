@@ -554,6 +554,10 @@ func (gh *Client) filterTopIssues(
 	return parseIssues(logger, rawIssues)
 }
 
+type ListTopIssueser interface {
+	ListTopIssues(*log.Logger, string, string, int) ([]Issue, *errors.HttpError)
+}
+
 func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]Issue, *errors.HttpError) {
 	return gh.filterTopIssues(
 		logger,

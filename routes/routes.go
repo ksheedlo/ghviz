@@ -15,7 +15,7 @@ import (
 	"github.com/ksheedlo/ghviz/simulate"
 )
 
-func ListStarCounts(gh github.ListStarEventser) func(http.ResponseWriter, *http.Request) {
+func ListStarCounts(gh github.ListStarEventser) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
@@ -33,7 +33,7 @@ func ListStarCounts(gh github.ListStarEventser) func(http.ResponseWriter, *http.
 	}
 }
 
-func ListOpenIssuesAndPrs(gh github.ListIssueser) func(http.ResponseWriter, *http.Request) {
+func ListOpenIssuesAndPrs(gh github.ListIssueser) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
 		vars := mux.Vars(r)
@@ -47,6 +47,24 @@ func ListOpenIssuesAndPrs(gh github.ListIssueser) func(http.ResponseWriter, *htt
 		// Suppress JSON marshaling errors because we know we can always
 		// marshal `simulate.OpenIssueAndPrCount`s.
 		jsonBlob, _ := json.Marshal(simulate.OpenIssueAndPrCounts(events))
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBlob)
+	}
+}
+
+func TopIssues(gh github.ListTopIssueser) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
+		vars := mux.Vars(r)
+		allItems, httpErr := gh.ListTopIssues(logger, vars["owner"], vars["repo"], 5)
+		if httpErr != nil {
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+			return
+		}
+		// Suppress JSON marshaling errors because we know we can always
+		// marshal `github.Issue`s.
+		jsonBlob, _ := json.Marshal(allItems)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
 	}
