@@ -69,3 +69,21 @@ func TopIssues(gh github.ListTopIssueser) http.HandlerFunc {
 		w.Write(jsonBlob)
 	}
 }
+
+func TopPrs(gh github.ListTopPrser) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
+		vars := mux.Vars(r)
+		allItems, httpErr := gh.ListTopPrs(logger, vars["owner"], vars["repo"], 5)
+		if httpErr != nil {
+			w.WriteHeader(httpErr.Status)
+			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
+			return
+		}
+		// Suppress JSON marshaling errors because we know we can always
+		// marshal `github.Issue`s.
+		jsonBlob, _ := json.Marshal(allItems)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(jsonBlob)
+	}
+}

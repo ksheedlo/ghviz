@@ -275,3 +275,84 @@ func TestTopIssuesError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Equal(t, "Github API Error\n", w.Body.String())
 }
+
+type MockListTopPrser struct {
+	mock.Mock
+}
+
+func (m *MockListTopPrser) ListTopPrs(
+	logger *log.Logger,
+	owner, repo string,
+	limit int,
+) ([]github.Issue, *errors.HttpError) {
+	args := m.Called(logger, owner, repo, limit)
+	var issues []github.Issue = nil
+	var err *errors.HttpError = nil
+	issuesArg := args.Get(0)
+	if issuesArg != nil {
+		issues = issuesArg.([]github.Issue)
+	}
+	errArg := args.Get(1)
+	if errArg != nil {
+		err = errArg.(*errors.HttpError)
+	}
+	return issues, err
+}
+
+func TestTopPrs(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	ghMock := &MockListTopPrser{}
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
+	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	ghMock.
+		On("ListTopPrs", logger, "tester1", "coolrepo", 5).
+		Return([]github.Issue{
+			github.Issue{Title: "Test PR 1", IsPr: true},
+			github.Issue{Title: "Test PR 2", IsPr: true},
+		}, nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	ghMock.AssertExpectations(t)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+
+	var bodyContents []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Len(t, bodyContents, 2)
+	assert.Equal(t, "Test PR 1", bodyContents[0]["title"].(string))
+	assert.Equal(t, "Test PR 2", bodyContents[1]["title"].(string))
+}
+
+func TestTopPrsError(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	ghMock := &MockListTopPrser{}
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
+	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	ghMock.
+		On("ListTopPrs", logger, "tester1", "coolrepo", 5).
+		Return(nil, &errors.HttpError{
+			Message: "Github API Error",
+			Status:  http.StatusInternalServerError,
+		})
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	ghMock.AssertExpectations(t)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, "Github API Error\n", w.Body.String())
+}
