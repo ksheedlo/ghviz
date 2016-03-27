@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"text/template"
 	"time"
@@ -17,7 +18,9 @@ import (
 
 	"github.com/ksheedlo/ghviz/errors"
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/middleware"
+	"github.com/ksheedlo/ghviz/simulate"
 )
 
 func dummyLogger(t *testing.T) *log.Logger {
@@ -378,4 +381,315 @@ func TestServeIndex(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "<Test>tester1|coolrepo</Test>", w.Body.String())
+}
+
+func TestHighScoresBadYear(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/foof/03",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Equal(t, "error", bodyContents["type"].(string))
+	assert.Equal(t, 400, int(bodyContents["code"].(float64)))
+	assert.Equal(t, "foof is not a valid year", bodyContents["message"].(string))
+}
+
+func TestHighScoresBadMonth(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2016/barf",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Equal(t, "error", bodyContents["type"].(string))
+	assert.Equal(t, 400, int(bodyContents["code"].(float64)))
+	assert.Equal(t, "barf is not a valid month between 01-12", bodyContents["message"].(string))
+}
+
+func TestHighScoresNotFound(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	redis := &interfaces.MockRediser{}
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2016/03",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	redis.
+		On("Get", "gh:repos:tester1:coolrepo:issue_event_setid").
+		Return("", nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	redis.AssertExpectations(t)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Equal(t, "error", bodyContents["type"].(string))
+	assert.Equal(t, 404, int(bodyContents["code"].(float64)))
+	assert.Equal(t, "Scores for tester1/coolrepo were not found.", bodyContents["message"].(string))
+}
+
+type ErrorFunc func() string
+
+func (f ErrorFunc) Error() string {
+	return f()
+}
+
+func ConstantError(msg string) ErrorFunc {
+	return ErrorFunc(func() string {
+		return msg
+	})
+}
+
+func TestHighScoresRedisError(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	redis := &interfaces.MockRediser{}
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2016/03",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	redis.
+		On("Get", "gh:repos:tester1:coolrepo:issue_event_setid").
+		Return("deadbeef", nil)
+
+	redis.
+		On(
+			"ZRangeByScore",
+			"gh:repos:tester1:coolrepo:issue_events:deadbeef",
+			&interfaces.ZRangeByScoreOpts{
+				Min: strconv.FormatInt(
+					time.Date(2016, time.Month(3), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+				Max: strconv.FormatInt(
+					time.Date(2016, time.Month(4), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+			}).
+		Return(nil, ConstantError("Redis Error"))
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	redis.AssertExpectations(t)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Equal(t, "error", bodyContents["type"].(string))
+	assert.Equal(t, 500, int(bodyContents["code"].(float64)))
+	assert.Equal(t, "Internal Server Error", bodyContents["message"].(string))
+}
+
+func TestHighScoresBadJsonError(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	redis := &interfaces.MockRediser{}
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2016/03",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	redis.
+		On("Get", "gh:repos:tester1:coolrepo:issue_event_setid").
+		Return("deadbeef", nil)
+
+	redis.
+		On(
+			"ZRangeByScore",
+			"gh:repos:tester1:coolrepo:issue_events:deadbeef",
+			&interfaces.ZRangeByScoreOpts{
+				Min: strconv.FormatInt(
+					time.Date(2016, time.Month(3), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+				Max: strconv.FormatInt(
+					time.Date(2016, time.Month(4), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+			}).
+		Return([]string{
+			`{"actor_id":"foof`,
+		}, nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	redis.AssertExpectations(t)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Equal(t, "error", bodyContents["type"].(string))
+	assert.Equal(t, 500, int(bodyContents["code"].(float64)))
+	assert.Equal(t, "Internal Server Error", bodyContents["message"].(string))
+}
+
+func marshalEachScoringEvent(t *testing.T, sevs ...simulate.ScoringEvent) []string {
+	var result []string
+	for _, sev := range sevs {
+		jsonBytes, err := json.Marshal(&sev)
+		assert.NoError(t, err)
+		result = append(result, string(jsonBytes))
+	}
+	return result
+}
+
+func TestHighScores(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	redis := &interfaces.MockRediser{}
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2016/03",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	redis.
+		On("Get", "gh:repos:tester1:coolrepo:issue_event_setid").
+		Return("deadbeef", nil)
+
+	redis.
+		On(
+			"ZRangeByScore",
+			"gh:repos:tester1:coolrepo:issue_events:deadbeef",
+			&interfaces.ZRangeByScoreOpts{
+				Min: strconv.FormatInt(
+					time.Date(2016, time.Month(3), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+				Max: strconv.FormatInt(
+					time.Date(2016, time.Month(4), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+			}).
+		Return(marshalEachScoringEvent(t,
+			simulate.ScoringEvent{ActorId: "tester1", EventType: simulate.IssueOpened},
+			simulate.ScoringEvent{ActorId: "tester2", EventType: simulate.IssueReviewed},
+		), nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	redis.AssertExpectations(t)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Len(t, bodyContents, 2)
+	assert.Equal(t, "tester2", bodyContents[0]["actor_id"].(string))
+	assert.Equal(t, 1000, int(bodyContents[0]["score"].(float64)))
+	assert.Equal(t, "tester1", bodyContents[1]["actor_id"].(string))
+	assert.Equal(t, 200, int(bodyContents[1]["score"].(float64)))
+}
+
+func TestHighScoresYearWraparound(t *testing.T) {
+	t.Parallel()
+
+	r := mux.NewRouter()
+	logger := dummyLogger(t)
+	redis := &interfaces.MockRediser{}
+	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
+	req, err := http.NewRequest(
+		"GET",
+		"http://example.com/tester1/coolrepo/2015/12",
+		nil,
+	)
+	assert.NoError(t, err)
+	context.Set(req, middleware.CtxLog, logger)
+
+	redis.
+		On("Get", "gh:repos:tester1:coolrepo:issue_event_setid").
+		Return("deadbeef", nil)
+
+	redis.
+		On(
+			"ZRangeByScore",
+			"gh:repos:tester1:coolrepo:issue_events:deadbeef",
+			&interfaces.ZRangeByScoreOpts{
+				Min: strconv.FormatInt(
+					time.Date(2015, time.Month(12), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+				Max: strconv.FormatInt(
+					time.Date(2016, time.Month(1), 1, 0, 0, 0, 0, time.UTC).Unix(),
+					10,
+				),
+			}).
+		Return(marshalEachScoringEvent(t,
+			simulate.ScoringEvent{ActorId: "tester2", EventType: simulate.IssueReviewed},
+			simulate.ScoringEvent{ActorId: "tester3", EventType: simulate.IssueReviewed},
+			simulate.ScoringEvent{ActorId: "tester3", EventType: simulate.IssueReviewed},
+		), nil)
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	redis.AssertExpectations(t)
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	var bodyContents []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &bodyContents))
+	assert.Len(t, bodyContents, 2)
+	assert.Equal(t, "tester3", bodyContents[0]["actor_id"].(string))
+	assert.Equal(t, 2000, int(bodyContents[0]["score"].(float64)))
+	assert.Equal(t, "tester2", bodyContents[1]["actor_id"].(string))
+	assert.Equal(t, 1000, int(bodyContents[1]["score"].(float64)))
 }

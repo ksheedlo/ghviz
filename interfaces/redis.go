@@ -96,5 +96,9 @@ func (m *MockRediser) ZAdd(key string, members ...ZZ) (int64, error) {
 
 func (m *MockRediser) ZRangeByScore(key string, opts *ZRangeByScoreOpts) ([]string, error) {
 	args := m.Called(key, opts)
-	return args.Get(0).([]string), args.Error(1)
+	resultsArg := args.Get(0)
+	if resultsArg != nil {
+		return resultsArg.([]string), args.Error(1)
+	}
+	return nil, args.Error(1)
 }
