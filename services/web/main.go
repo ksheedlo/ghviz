@@ -43,28 +43,6 @@ func ServeStaticFile(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, path.Join("dashboard", vars["path"]))
 }
 
-func TopIssues(gh *github.Client) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
-		vars := mux.Vars(r)
-		allItems, httpErr := gh.ListTopIssues(logger, vars["owner"], vars["repo"], 5)
-		if httpErr != nil {
-			log.Fatal(httpErr)
-			w.WriteHeader(httpErr.Status)
-			w.Write([]byte(fmt.Sprintf("%s\n", httpErr.Message)))
-			return
-		}
-		jsonBlob, jsonErr := json.Marshal(allItems)
-		if jsonErr != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonBlob)
-	}
-}
-
 func TopPrs(gh *github.Client) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := context.Get(r, middleware.CtxLog).(*log.Logger)
@@ -230,7 +208,7 @@ func main() {
 		"/gh/{owner}/{repo}/issue_counts",
 		withMiddleware(routes.ListOpenIssuesAndPrs(gh)),
 	)
-	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(TopIssues(gh)))
+	r.HandleFunc("/gh/{owner}/{repo}/top_issues", withMiddleware(routes.TopIssues(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/top_prs", withMiddleware(TopPrs(gh)))
 	r.HandleFunc("/gh/{owner}/{repo}/highscores/{year:[0-9]+}/{month:(0[1-9]|1[012])}", withMiddleware(HighScores(redisClient)))
 	http.ListenAndServe(":4000", r)
