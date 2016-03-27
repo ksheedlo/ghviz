@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -9,38 +8,6 @@ import (
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/stretchr/testify/assert"
 )
-
-const starsJson string = `[
-{"starred_at":"2016-03-07T03:25:41.469Z"},
-{"starred_at":"2016-03-07T03:23:53.002Z"},
-{"starred_at":"2016-03-07T03:26:14.739Z"}]`
-
-func TestStarEventsFromApi(t *testing.T) {
-	t.Parallel()
-	stars := make([]map[string]interface{}, 3)
-	json.Unmarshal([]byte(starsJson), &stars)
-	starEvents, err := StarEventsFromApi(stars)
-	assert.NoError(t, err)
-	assert.Len(t, starEvents, 3)
-	assert.True(t,
-		starEvents[0].StarredAt.Before(starEvents[1].StarredAt),
-		"Expected starEvents[0] to be before starEvents[1] !",
-	)
-	assert.True(t,
-		starEvents[1].StarredAt.Before(starEvents[2].StarredAt),
-		"Expected starEvents[1] to be before starEvents[2] !",
-	)
-}
-
-const badStarsJson string = `[{"starred_at":"fish"}]`
-
-func TestStarEventsFromApiError(t *testing.T) {
-	t.Parallel()
-	stars := make([]map[string]interface{}, 1)
-	json.Unmarshal([]byte(badStarsJson), &stars)
-	_, err := StarEventsFromApi(stars)
-	assert.Error(t, err)
-}
 
 func TestIssueEventsFromApi(t *testing.T) {
 	t.Parallel()

@@ -26,7 +26,7 @@ const HIGH_SCORES_USAGE string = `Prewarm the list of high scores (i.e., all tim
 
 const ISSUES_USAGE string = `Prewarm Github issues into the cache.`
 
-const STARGAZERS_USAGE string = `Prewarm stargazers into the cache.`
+const STARGAZERS_USAGE string = `Prewarm star events into the cache.`
 
 const TOP_ISSUES_USAGE string = `Specify the number of top issues to prewarm into the cache. Set to 0 or
         leave empty to not fetch top issues.`
@@ -54,7 +54,7 @@ func main() {
 
 	prewarmHighScores := flag.Bool("high-scores", false, HIGH_SCORES_USAGE)
 	prewarmIssues := flag.Bool("issues", false, ISSUES_USAGE)
-	prewarmStargazers := flag.Bool("stargazers", false, STARGAZERS_USAGE)
+	prewarmStarEvents := flag.Bool("star-events", false, STARGAZERS_USAGE)
 	prewarmTopIssues := flag.Int("top-issues", 0, TOP_ISSUES_USAGE)
 	prewarmTopPrs := flag.Int("top-prs", 0, TOP_PRS_USAGE)
 
@@ -92,10 +92,10 @@ func main() {
 			}
 		}()
 	}
-	if *prewarmStargazers {
+	if *prewarmStarEvents {
 		pendingTasks++
 		go func() {
-			if _, err := gh.ListStargazers(logger, owner, repo); err != nil {
+			if _, err := gh.ListStarEvents(logger, owner, repo); err != nil {
 				logger.Printf("ERROR: %s\n", err.Error())
 				errChan <- 1
 			} else {

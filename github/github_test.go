@@ -30,7 +30,12 @@ func dummyLogger(t *testing.T) *log.Logger {
 	return log.New(devnull, "", 0)
 }
 
-func TestListStargazers(t *testing.T) {
+const starsJson string = `[
+{"starred_at":"2016-03-07T03:25:41.469Z"},
+{"starred_at":"2016-03-07T03:23:53.002Z"},
+{"starred_at":"2016-03-07T03:26:14.739Z"}]`
+
+func TestListStarEvents(t *testing.T) {
 	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "application/vnd.github.v3.star+json", r.Header.Get("Accept"))
@@ -38,7 +43,7 @@ func TestListStargazers(t *testing.T) {
 			"/repos/angular/angular/stargazers?per_page=100",
 			pathAndQueryOnly(t, r.URL.String()),
 		)
-		fmt.Fprintln(w, "[{}, {}, {}]")
+		fmt.Fprintln(w, starsJson)
 	}))
 	defer ts.Close()
 
@@ -46,10 +51,59 @@ func TestListStargazers(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
+	starEvents, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
-	assert.Equal(t, len(allStargazers), 3)
+	assert.Equal(t, len(starEvents), 3)
+	assert.True(t,
+		starEvents[0].StarredAt.Before(starEvents[1].StarredAt),
+		"Expected starEvents[0] to be before starEvents[1] !",
+	)
+	assert.True(t,
+		starEvents[1].StarredAt.Before(starEvents[2].StarredAt),
+		"Expected starEvents[1] to be before starEvents[2] !",
+	)
 }
+
+const starsBadJson string = `["starred_at":"201`
+
+func TestListStarEventsBadJson(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, starsBadJson)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	_, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	assert.Error(t, err)
+}
+
+const starsBadStarredAtJson string = `[{"starred_at":"fish"}]`
+
+func TestListStarEventsBadStarredAt(t *testing.T) {
+	t.Parallel()
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, starsBadStarredAtJson)
+	}))
+	defer ts.Close()
+
+	gh := NewClient(&Options{
+		BaseUrl: ts.URL,
+		Token:   "deadbeef",
+	})
+	_, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	assert.Error(t, err)
+}
+
+const starsJsonPage2 string = `[
+{"starred_at":"2016-03-26T22:08:30.679Z"},
+{"starred_at":"2016-03-26T22:08:35.319Z"},
+{"starred_at":"2016-03-26T22:08:39.351Z"}]`
 
 func TestPagination(t *testing.T) {
 	var nextPage string
@@ -60,10 +114,11 @@ func TestPagination(t *testing.T) {
 		call++
 		if call < 2 {
 			w.Header().Add("Link", fmt.Sprintf("<%s>; rel=\"next\"", nextPage))
+			fmt.Fprintln(w, starsJson)
 		} else {
 			assert.Equal(t, pathAndQueryOnly(t, nextPage), r.URL.String())
+			fmt.Fprintln(w, starsJsonPage2)
 		}
-		fmt.Fprintln(w, "[{}, {}, {}]")
 	}))
 	defer ts.Close()
 	nextPage = fmt.Sprintf("%s/repos/angular/angular/stargazers?per_page=100&page=2", ts.URL)
@@ -72,10 +127,10 @@ func TestPagination(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allStargazers, err := gh.ListStargazers(dummyLogger(t), "angular", "angular")
+	starEvents, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
 	assert.Equal(t, call, 2)
-	assert.Equal(t, len(allStargazers), 6)
+	assert.Equal(t, len(starEvents), 6)
 }
 
 const issuesJson string = `[{

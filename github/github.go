@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,16 @@ type Options struct {
 	RedisClient  interfaces.Rediser
 	Token        string
 }
+
+type StarEvent struct {
+	StarredAt time.Time
+}
+
+type byStarredAt []StarEvent
+
+func (a byStarredAt) Len() int           { return len(a) }
+func (a byStarredAt) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a byStarredAt) Less(i, j int) bool { return a[i].StarredAt.Before(a[j].StarredAt) }
 
 type Issue struct {
 	ClosedAt  time.Time
@@ -146,7 +157,12 @@ func (gh *Client) paginateGithub(
 		if err != nil {
 			return nil, &errors.HttpError{Message: "Server Error", Status: http.StatusInternalServerError}
 		}
-		json.Unmarshal(contents, &items)
+		if err := json.Unmarshal(contents, &items); err != nil {
+			return nil, &errors.HttpError{
+				Message: "Github API Error",
+				Status:  http.StatusBadGateway,
+			}
+		}
 		allItems = append(allItems, items...)
 		for i := 0; i < len(items); i++ {
 			items[i] = nil
@@ -250,8 +266,12 @@ func redisWrap(
 	return items, nil
 }
 
-func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[string]interface{}, *errors.HttpError) {
-	return redisWrap(
+type ListStarEventser interface {
+	ListStarEvents(*log.Logger, string, string) ([]StarEvent, *errors.HttpError)
+}
+
+func (gh *Client) ListStarEvents(logger *log.Logger, owner, repo string) ([]StarEvent, *errors.HttpError) {
+	untypedStargazers, httpErr := redisWrap(
 		gh,
 		stargazersKey(owner, repo),
 		"stargazers",
@@ -275,6 +295,22 @@ func (gh *Client) ListStargazers(logger *log.Logger, owner, repo string) ([]map[
 			return stargazers, nil
 		},
 	)
+	if httpErr != nil {
+		return nil, httpErr
+	}
+	starEvents := make([]StarEvent, len(untypedStargazers))
+	for i, stargazer := range untypedStargazers {
+		starredAt, err := time.Parse(time.RFC3339, stargazer["starred_at"].(string))
+		if err != nil {
+			return nil, &errors.HttpError{
+				Message: "Server Error",
+				Status:  http.StatusInternalServerError,
+			}
+		}
+		starEvents[i].StarredAt = starredAt
+	}
+	sort.Sort(byStarredAt(starEvents))
+	return starEvents, nil
 }
 
 func cleanIssueJsons(issues []map[string]interface{}) {
@@ -351,6 +387,10 @@ func parseIssues(logger *log.Logger, rawIssues []map[string]interface{}) ([]Issu
 	}
 
 	return issues, nil
+}
+
+type ListIssueser interface {
+	ListIssues(*log.Logger, string, string) ([]Issue, *errors.HttpError)
 }
 
 func (gh *Client) ListIssues(logger *log.Logger, owner, repo string) ([]Issue, *errors.HttpError) {
@@ -514,6 +554,10 @@ func (gh *Client) filterTopIssues(
 	return parseIssues(logger, rawIssues)
 }
 
+type ListTopIssueser interface {
+	ListTopIssues(*log.Logger, string, string, int) ([]Issue, *errors.HttpError)
+}
+
 func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit int) ([]Issue, *errors.HttpError) {
 	return gh.filterTopIssues(
 		logger,
@@ -527,6 +571,10 @@ func (gh *Client) ListTopIssues(logger *log.Logger, owner, repo string, limit in
 			return !isPr
 		},
 	)
+}
+
+type ListTopPrser interface {
+	ListTopPrs(*log.Logger, string, string, int) ([]Issue, *errors.HttpError)
 }
 
 func (gh *Client) ListTopPrs(logger *log.Logger, owner, repo string, limit int) ([]Issue, *errors.HttpError) {
