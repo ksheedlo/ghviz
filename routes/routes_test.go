@@ -5,29 +5,23 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strconv"
 	"testing"
 	"text/template"
 	"time"
 
-	"github.com/gorilla/context"
-	"github.com/gorilla/mux"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-
 	"github.com/ksheedlo/ghviz/errors"
 	"github.com/ksheedlo/ghviz/github"
 	"github.com/ksheedlo/ghviz/interfaces"
 	"github.com/ksheedlo/ghviz/middleware"
+	"github.com/ksheedlo/ghviz/mocks"
 	"github.com/ksheedlo/ghviz/simulate"
-)
 
-func dummyLogger(t *testing.T) *log.Logger {
-	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0777)
-	assert.NoError(t, err)
-	return log.New(devnull, "", 0)
-}
+	"github.com/gorilla/context"
+	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+)
 
 type MockListStarEventser struct {
 	mock.Mock
@@ -56,7 +50,7 @@ func TestListStarCounts(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListStarEventser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListStarCounts(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -87,7 +81,7 @@ func TestListStarCountsError(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListStarEventser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListStarCounts(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -135,7 +129,7 @@ func TestListOpenIssuesAndPrs(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListIssueser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -178,7 +172,7 @@ func TestListIssuesError(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListIssueser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -227,7 +221,7 @@ func TestTopIssues(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListTopIssueser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopIssues(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -259,7 +253,7 @@ func TestTopIssuesError(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListTopIssueser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopIssues(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -308,7 +302,7 @@ func TestTopPrs(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListTopPrser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -340,7 +334,7 @@ func TestTopPrsError(t *testing.T) {
 
 	r := mux.NewRouter()
 	ghMock := &MockListTopPrser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
 	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
 	assert.NoError(t, err)
@@ -365,7 +359,7 @@ func TestServeIndex(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	tpl, err := template.New("index").Parse("<Test>{{.Owner}}|{{.Repo}}</Test>")
 	assert.NoError(t, err)
 	r.HandleFunc("/", ServeIndex(&IndexParams{
@@ -387,7 +381,7 @@ func TestHighScoresBadYear(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
 	req, err := http.NewRequest(
 		"GET",
@@ -413,7 +407,7 @@ func TestHighScoresBadMonth(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
 	req, err := http.NewRequest(
 		"GET",
@@ -439,8 +433,8 @@ func TestHighScoresNotFound(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
-	redis := &interfaces.MockRediser{}
+	logger := mocks.DummyLogger(t)
+	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
 	req, err := http.NewRequest(
 		"GET",
@@ -467,24 +461,12 @@ func TestHighScoresNotFound(t *testing.T) {
 	assert.Equal(t, "Scores for tester1/coolrepo were not found.", bodyContents["message"].(string))
 }
 
-type ErrorFunc func() string
-
-func (f ErrorFunc) Error() string {
-	return f()
-}
-
-func ConstantError(msg string) ErrorFunc {
-	return ErrorFunc(func() string {
-		return msg
-	})
-}
-
 func TestHighScoresRedisError(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
-	redis := &interfaces.MockRediser{}
+	logger := mocks.DummyLogger(t)
+	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
 	req, err := http.NewRequest(
 		"GET",
@@ -512,7 +494,7 @@ func TestHighScoresRedisError(t *testing.T) {
 					10,
 				),
 			}).
-		Return(nil, ConstantError("Redis Error"))
+		Return(nil, mocks.ConstantError("Redis Error"))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -531,8 +513,8 @@ func TestHighScoresBadJsonError(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
-	redis := &interfaces.MockRediser{}
+	logger := mocks.DummyLogger(t)
+	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
 	req, err := http.NewRequest(
 		"GET",
@@ -591,8 +573,8 @@ func TestHighScores(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
-	redis := &interfaces.MockRediser{}
+	logger := mocks.DummyLogger(t)
+	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
 	req, err := http.NewRequest(
 		"GET",
@@ -644,8 +626,8 @@ func TestHighScoresYearWraparound(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	logger := dummyLogger(t)
-	redis := &interfaces.MockRediser{}
+	logger := mocks.DummyLogger(t)
+	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
 	req, err := http.NewRequest(
 		"GET",

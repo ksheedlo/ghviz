@@ -7,7 +7,7 @@ type HttpError struct {
 	Status  int
 }
 
-func (e HttpError) Error() string {
+func (e *HttpError) Error() string {
 	return e.Message
 }
 
@@ -15,6 +15,6 @@ type BadRedisValues struct {
 	CacheKey string
 }
 
-func (e BadRedisValues) Error() string {
+func (e *BadRedisValues) Error() string {
 	return fmt.Sprintf("Redis query for key %s returned a malformatted value", e.CacheKey)
 }

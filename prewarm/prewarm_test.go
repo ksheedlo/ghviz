@@ -2,25 +2,18 @@ package prewarm
 
 import (
 	"log"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/ksheedlo/ghviz/errors"
 	"github.com/ksheedlo/ghviz/github"
-	"github.com/ksheedlo/ghviz/interfaces"
+	"github.com/ksheedlo/ghviz/mocks"
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-func dummyLogger(t *testing.T) *log.Logger {
-	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0777)
-	assert.NoError(t, err)
-	return log.New(devnull, "", 0)
-}
 
 type MockListAllPrEventser struct {
 	mock.Mock
@@ -47,26 +40,14 @@ func (m *MockRandomTagger) RandomTag() (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-type ErrorFunc func() string
-
-func (f ErrorFunc) Error() string {
-	return f()
-}
-
-func ConstantError(msg string) ErrorFunc {
-	return ErrorFunc(func() string {
-		return msg
-	})
-}
-
 func TestPrewarmHighScores(t *testing.T) {
 	t.Parallel()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	ghMock := &MockListAllPrEventser{}
 	clock := clockwork.NewFakeClock()
 	randomTagger := &MockRandomTagger{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -142,7 +123,7 @@ func TestPrewarmPropagatesGithubError(t *testing.T) {
 	t.Parallel()
 
 	ghMock := &MockListAllPrEventser{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -161,7 +142,7 @@ func TestPrewarmPropagatesRandomIOError(t *testing.T) {
 
 	ghMock := &MockListAllPrEventser{}
 	randomTagger := &MockRandomTagger{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -175,7 +156,7 @@ func TestPrewarmPropagatesRandomIOError(t *testing.T) {
 			},
 		}, nil)
 
-	randomTagger.On("RandomTag").Return("", ConstantError("I/O Error"))
+	randomTagger.On("RandomTag").Return("", mocks.ConstantError("I/O Error"))
 
 	err := PrewarmHighScores(
 		logger,
@@ -195,10 +176,10 @@ func TestPrewarmPropagatesRandomIOError(t *testing.T) {
 func TestPrewarmPropagatesRedisZAddError(t *testing.T) {
 	t.Parallel()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	ghMock := &MockListAllPrEventser{}
 	randomTagger := &MockRandomTagger{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -216,7 +197,7 @@ func TestPrewarmPropagatesRedisZAddError(t *testing.T) {
 
 	redisMock.
 		On("ZAdd", "gh:repos:tester1:coolrepo:issue_events:deadbeef").
-		Return(int64(0), ConstantError("ZAdd Error"))
+		Return(int64(0), mocks.ConstantError("ZAdd Error"))
 
 	err := PrewarmHighScores(
 		logger,
@@ -237,10 +218,10 @@ func TestPrewarmPropagatesRedisZAddError(t *testing.T) {
 func TestPrewarmPropagatesRedisSetError(t *testing.T) {
 	t.Parallel()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	ghMock := &MockListAllPrEventser{}
 	randomTagger := &MockRandomTagger{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -266,7 +247,7 @@ func TestPrewarmPropagatesRedisSetError(t *testing.T) {
 
 	redisMock.
 		On("Set", "gh:repos:tester1:coolrepo:issue_event_setid", "", time.Duration(0)).
-		Return(ConstantError("Redis Error"))
+		Return(mocks.ConstantError("Redis Error"))
 
 	err := PrewarmHighScores(
 		logger,
@@ -287,11 +268,11 @@ func TestPrewarmPropagatesRedisSetError(t *testing.T) {
 func TestPrewarmRecoversDeleteOldIssueEventset(t *testing.T) {
 	t.Parallel()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	ghMock := &MockListAllPrEventser{}
 	clock := clockwork.NewFakeClock()
 	randomTagger := &MockRandomTagger{}
-	logger := dummyLogger(t)
+	logger := mocks.DummyLogger(t)
 
 	ghMock.
 		On("ListAllPrEvents", logger, "tester1", "coolrepo").
@@ -321,7 +302,7 @@ func TestPrewarmRecoversDeleteOldIssueEventset(t *testing.T) {
 
 	redisMock.
 		On("Del", "gh:repos:tester1:coolrepo:issue_events:dogetest").
-		Return(int64(0), ConstantError("Delete Event Set Failed"))
+		Return(int64(0), mocks.ConstantError("Delete Event Set Failed"))
 
 	var wg sync.WaitGroup
 	wg.Add(1)

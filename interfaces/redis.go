@@ -3,7 +3,6 @@ package interfaces
 import (
 	"time"
 
-	"github.com/stretchr/testify/mock"
 	"gopkg.in/redis.v3"
 )
 
@@ -66,39 +65,4 @@ func (gr *GoRedisAdapter) ZRangeByScore(
 		Min: opts.Min,
 		Max: opts.Max,
 	}).Result()
-}
-
-type MockRediser struct {
-	mock.Mock
-}
-
-func (m *MockRediser) Del(key string) (int64, error) {
-	args := m.Called(key)
-	return args.Get(0).(int64), args.Error(1)
-}
-
-func (m *MockRediser) Get(key string) (string, error) {
-	args := m.Called(key)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockRediser) Set(key, value string, ttl time.Duration) error {
-	// Set the value to "" because it's used to set JSON, which serializes
-	// in an unpredictable order.
-	args := m.Called(key, "", ttl)
-	return args.Error(0)
-}
-
-func (m *MockRediser) ZAdd(key string, members ...ZZ) (int64, error) {
-	args := m.Called(key)
-	return args.Get(0).(int64), args.Error(1)
-}
-
-func (m *MockRediser) ZRangeByScore(key string, opts *ZRangeByScoreOpts) ([]string, error) {
-	args := m.Called(key, opts)
-	resultsArg := args.Get(0)
-	if resultsArg != nil {
-		return resultsArg.([]string), args.Error(1)
-	}
-	return nil, args.Error(1)
 }

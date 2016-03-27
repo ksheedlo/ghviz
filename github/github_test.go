@@ -3,15 +3,14 @@ package github
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/ksheedlo/ghviz/interfaces"
+	"github.com/ksheedlo/ghviz/mocks"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,12 +21,6 @@ func pathAndQueryOnly(t *testing.T, rawurl string) string {
 		return fmt.Sprintf("%s?%s", urlObj.Path, urlObj.RawQuery)
 	}
 	return urlObj.Path
-}
-
-func dummyLogger(t *testing.T) *log.Logger {
-	devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0777)
-	assert.NoError(t, err)
-	return log.New(devnull, "", 0)
 }
 
 const starsJson string = `[
@@ -51,7 +44,7 @@ func TestListStarEvents(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	starEvents, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	starEvents, err := gh.ListStarEvents(mocks.DummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
 	assert.Equal(t, len(starEvents), 3)
 	assert.True(t,
@@ -78,7 +71,7 @@ func TestListStarEventsBadJson(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	_, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	_, err := gh.ListStarEvents(mocks.DummyLogger(t), "angular", "angular")
 	assert.Error(t, err)
 }
 
@@ -96,7 +89,7 @@ func TestListStarEventsBadStarredAt(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	_, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	_, err := gh.ListStarEvents(mocks.DummyLogger(t), "angular", "angular")
 	assert.Error(t, err)
 }
 
@@ -127,7 +120,7 @@ func TestPagination(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	starEvents, err := gh.ListStarEvents(dummyLogger(t), "angular", "angular")
+	starEvents, err := gh.ListStarEvents(mocks.DummyLogger(t), "angular", "angular")
 	assert.NoError(t, err)
 	assert.Equal(t, call, 2)
 	assert.Equal(t, len(starEvents), 6)
@@ -185,7 +178,7 @@ func TestListIssues(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -214,7 +207,7 @@ func TestListIssuesBadCreatedAt(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	_, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.Error(t, err)
 }
 
@@ -240,7 +233,7 @@ func TestListIssuesBadClosedAt(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	_, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.Error(t, err)
 }
 
@@ -252,7 +245,7 @@ func TestRedisCacheHit(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -265,7 +258,7 @@ func TestRedisCacheHit(t *testing.T) {
 		nil,
 	)
 
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -280,7 +273,7 @@ func TestRedisCacheSet(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -292,7 +285,7 @@ func TestRedisCacheSet(t *testing.T) {
 	redisMock.On("Get", cacheKey).Return("", nil)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
-	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	_, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	redisMock.AssertExpectations(t)
 }
@@ -305,7 +298,7 @@ func TestRedisStaleCacheHit(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -320,7 +313,7 @@ func TestRedisStaleCacheHit(t *testing.T) {
 	)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -335,7 +328,7 @@ func TestBadRedisValues(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -347,7 +340,7 @@ func TestBadRedisValues(t *testing.T) {
 	redisMock.On("Get", cacheKey).Return("chicken", nil)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -362,7 +355,7 @@ func TestBadRedisTimestamp(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -374,7 +367,7 @@ func TestBadRedisTimestamp(t *testing.T) {
 	redisMock.On("Get", cacheKey).Return("fish|chicken", nil)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -389,7 +382,7 @@ func TestBadRedisJSON(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	redisMock := &interfaces.MockRediser{}
+	redisMock := &mocks.MockRediser{}
 	gh := NewClient(&Options{
 		BaseUrl:      ts.URL,
 		MaxStaleness: 5,
@@ -405,7 +398,7 @@ func TestBadRedisJSON(t *testing.T) {
 	)
 	redisMock.On("Set", cacheKey, "", time.Duration(0)).Return(nil)
 
-	allIssues, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	allIssues, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Equal(t, len(allIssues), 4)
 	assert.Equal(t, allIssues[0].EventsUrl, "https://api.example.com/issues/1/events")
@@ -503,7 +496,7 @@ func TestTopIssues(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allIssues, err := gh.ListTopIssues(dummyLogger(t), "lodash", "lodash", 5)
+	allIssues, err := gh.ListTopIssues(mocks.DummyLogger(t), "lodash", "lodash", 5)
 	assert.NoError(t, err)
 	assert.Equal(t, call, 2)
 	assert.Equal(t, len(allIssues), 5)
@@ -574,7 +567,7 @@ func TestTopPrs(t *testing.T) {
 		BaseUrl: ts.URL,
 		Token:   "deadbeef",
 	})
-	allIssues, err := gh.ListTopPrs(dummyLogger(t), "lodash", "lodash", 5)
+	allIssues, err := gh.ListTopPrs(mocks.DummyLogger(t), "lodash", "lodash", 5)
 	assert.NoError(t, err)
 	assert.Equal(t, call, 2)
 	assert.Equal(t, len(allIssues), 5)
@@ -673,7 +666,7 @@ func TestListAllPrEvents(t *testing.T) {
 		Token:   "deadbeef",
 	})
 
-	prEvents, err := gh.ListAllPrEvents(dummyLogger(t), "lodash", "lodash")
+	prEvents, err := gh.ListAllPrEvents(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.NoError(t, err)
 	assert.Len(t, prEvents, 5)
 
@@ -699,7 +692,7 @@ func TestGithubError(t *testing.T) {
 		Token:   "deadbeef",
 	})
 
-	_, err := gh.ListIssues(dummyLogger(t), "lodash", "lodash")
+	_, err := gh.ListIssues(mocks.DummyLogger(t), "lodash", "lodash")
 	assert.Error(t, err)
 }
 

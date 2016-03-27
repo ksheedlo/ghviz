@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ksheedlo/ghviz/interfaces"
+	"github.com/ksheedlo/ghviz/mocks"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -22,18 +23,6 @@ func ErrorTag(err error) interfaces.RandomTaggerFunc {
 	return func() (string, error) {
 		return "", err
 	}
-}
-
-type ErrorFunc func() string
-
-func (f ErrorFunc) Error() string {
-	return f()
-}
-
-func ConstantError(msg string) ErrorFunc {
-	return ErrorFunc(func() string {
-		return msg
-	})
 }
 
 func TestAddResponseId(t *testing.T) {
@@ -61,7 +50,7 @@ func TestAddResponseIdError(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", AddResponseId(ErrorTag(ConstantError("Oops")))(
+	r.HandleFunc("/", AddResponseId(ErrorTag(mocks.ConstantError("Oops")))(
 		func(w http.ResponseWriter, r *http.Request) {},
 	))
 
