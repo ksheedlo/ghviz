@@ -8,16 +8,18 @@ import (
 	"github.com/gorilla/context"
 )
 
-func AddResponseId(handler http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		responseId, err := interfaces.RandomTag()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("Server Error\n"))
-			return
+func AddResponseId(tagger interfaces.RandomTagger) Middleware {
+	return func(handler http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			responseId, err := tagger.RandomTag()
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("Server Error\n"))
+				return
+			}
+			context.Set(r, CtxResponseId, responseId)
+			w.Header().Add("X-Response-Id", responseId)
+			handler(w, r)
 		}
-		context.Set(r, CtxResponseId, responseId)
-		w.Header().Add("X-Response-Id", responseId)
-		handler(w, r)
 	}
 }

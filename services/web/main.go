@@ -49,7 +49,7 @@ func main() {
 		Token:        os.Getenv("GITHUB_TOKEN"),
 	})
 	withMiddleware := middleware.Compose(
-		middleware.AddResponseId,
+		middleware.AddResponseId(interfaces.RandomTag),
 		middleware.AddLogger(os.Stdout),
 		middleware.LogRequest,
 		middleware.Gzip,
