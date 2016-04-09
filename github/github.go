@@ -185,7 +185,8 @@ func stargazersKey(owner, repo string) string {
 func parseRedisValues(cacheKey, cachedValues string) (time.Time, []byte, error) {
 	idx := strings.Index(cachedValues, "|")
 	if idx == -1 {
-		return time.Unix(0, 0), nil, &errors.BadRedisValues{CacheKey: cacheKey}
+		return time.Unix(0, 0), nil, fmt.Errorf(
+			"Redis query for key %s returned a malformatted value", cacheKey)
 	}
 	unixSeconds, err := strconv.ParseInt(cachedValues[:idx], 10, 64)
 	if err != nil {

@@ -52,8 +52,7 @@ func TestListStarCounts(t *testing.T) {
 	ghMock := &MockListStarEventser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListStarCounts(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -83,8 +82,7 @@ func TestListStarCountsError(t *testing.T) {
 	ghMock := &MockListStarEventser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListStarCounts(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -131,8 +129,7 @@ func TestListOpenIssuesAndPrs(t *testing.T) {
 	ghMock := &MockListIssueser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -174,8 +171,7 @@ func TestListIssuesError(t *testing.T) {
 	ghMock := &MockListIssueser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", ListOpenIssuesAndPrs(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -223,8 +219,7 @@ func TestTopIssues(t *testing.T) {
 	ghMock := &MockListTopIssueser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopIssues(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -255,8 +250,7 @@ func TestTopIssuesError(t *testing.T) {
 	ghMock := &MockListTopIssueser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopIssues(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -304,8 +298,7 @@ func TestTopPrs(t *testing.T) {
 	ghMock := &MockListTopPrser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -336,8 +329,7 @@ func TestTopPrsError(t *testing.T) {
 	ghMock := &MockListTopPrser{}
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}", TopPrs(ghMock))
-	req, err := http.NewRequest("GET", "http://example.com/tester1/coolrepo", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/tester1/coolrepo", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	ghMock.
@@ -366,8 +358,7 @@ func TestServeIndex(t *testing.T) {
 		Owner: "tester1",
 		Repo:  "coolrepo",
 	}, tpl))
-	req, err := http.NewRequest("GET", "http://example.com/", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
 	context.Set(req, middleware.CtxLog, logger)
 
 	w := httptest.NewRecorder()
@@ -383,12 +374,11 @@ func TestHighScoresBadYear(t *testing.T) {
 	r := mux.NewRouter()
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/foof/03",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	w := httptest.NewRecorder()
@@ -409,12 +399,11 @@ func TestHighScoresBadMonth(t *testing.T) {
 	r := mux.NewRouter()
 	logger := mocks.DummyLogger(t)
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(nil))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2016/barf",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	w := httptest.NewRecorder()
@@ -436,12 +425,11 @@ func TestHighScoresNotFound(t *testing.T) {
 	logger := mocks.DummyLogger(t)
 	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2016/03",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	redis.
@@ -468,12 +456,11 @@ func TestHighScoresRedisError(t *testing.T) {
 	logger := mocks.DummyLogger(t)
 	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2016/03",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	redis.
@@ -516,12 +503,11 @@ func TestHighScoresBadJsonError(t *testing.T) {
 	logger := mocks.DummyLogger(t)
 	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2016/03",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	redis.
@@ -562,8 +548,7 @@ func TestHighScoresBadJsonError(t *testing.T) {
 func marshalEachScoringEvent(t *testing.T, sevs ...simulate.ScoringEvent) []string {
 	var result []string
 	for _, sev := range sevs {
-		jsonBytes, err := json.Marshal(&sev)
-		assert.NoError(t, err)
+		jsonBytes := mocks.MarshalJSON(t, &sev)
 		result = append(result, string(jsonBytes))
 	}
 	return result
@@ -576,12 +561,11 @@ func TestHighScores(t *testing.T) {
 	logger := mocks.DummyLogger(t)
 	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2016/03",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	redis.
@@ -629,12 +613,11 @@ func TestHighScoresYearWraparound(t *testing.T) {
 	logger := mocks.DummyLogger(t)
 	redis := &mocks.MockRediser{}
 	r.HandleFunc("/{owner}/{repo}/{year}/{month}", HighScores(redis))
-	req, err := http.NewRequest(
+	req := mocks.NewHttpRequest(t,
 		"GET",
 		"http://example.com/tester1/coolrepo/2015/12",
 		nil,
 	)
-	assert.NoError(t, err)
 	context.Set(req, middleware.CtxLog, logger)
 
 	redis.

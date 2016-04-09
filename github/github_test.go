@@ -699,7 +699,7 @@ func TestGithubError(t *testing.T) {
 func TestMarshalIssue(t *testing.T) {
 	t.Parallel()
 
-	jsonBytes, err := json.Marshal(&Issue{
+	jsonBytes := mocks.MarshalJSON(t, &Issue{
 		CreatedAt: time.Unix(1458966366, 892000000).UTC(),
 		ClosedAt:  time.Unix(1458969687, 787000000).UTC(),
 		EventsUrl: "https://api.github.com/repos/88/issues/99/events",
@@ -710,7 +710,6 @@ func TestMarshalIssue(t *testing.T) {
 		Submitter: "tester1",
 		Title:     "Test Issue",
 	})
-	assert.NoError(t, err)
 	var issue map[string]interface{}
 	assert.NoError(t, json.Unmarshal(jsonBytes, &issue))
 	assert.Equal(t, "2016-03-26T04:26:06.892Z", issue["created_at"].(string))

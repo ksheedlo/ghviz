@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ksheedlo/ghviz/mocks"
 	"github.com/ksheedlo/ghviz/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -73,8 +74,7 @@ func TestOpenIssueToJSON(t *testing.T) {
 		OpenPrs:    5,
 		Timestamp:  time.Unix(1458966366, 892000000).UTC(),
 	}
-	jsonBytes, err := json.Marshal(&issueCount)
-	assert.NoError(t, err)
+	jsonBytes := mocks.MarshalJSON(t, &issueCount)
 	var issueMap map[string]interface{}
 	assert.NoError(t, json.Unmarshal(jsonBytes, &issueMap))
 	assert.Equal(t, 2.0, issueMap["open_issues"].(float64))

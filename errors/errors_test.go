@@ -15,11 +15,3 @@ func TestHttpError(t *testing.T) {
 
 	assert.Equal(t, "Bad Request", err.Error())
 }
-
-func TestBadRedisValues(t *testing.T) {
-	t.Parallel()
-
-	err := new(BadRedisValues)
-	err.CacheKey = "test:foof"
-	assert.Equal(t, "Redis query for key test:foof returned a malformatted value", err.Error())
-}

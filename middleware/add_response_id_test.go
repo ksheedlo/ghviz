@@ -36,8 +36,7 @@ func TestAddResponseId(t *testing.T) {
 		},
 	))
 
-	req, err := http.NewRequest("GET", "http://example.com/", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -54,8 +53,7 @@ func TestAddResponseIdError(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {},
 	))
 
-	req, err := http.NewRequest("GET", "http://example.com/", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

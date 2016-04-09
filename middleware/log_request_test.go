@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
+
+	"github.com/ksheedlo/ghviz/mocks"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -24,16 +25,14 @@ func TestLogRequest(t *testing.T) {
 		},
 	))
 
-	req, err := http.NewRequest("GET", "/foof", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "/foof", nil)
 	buf := new(bytes.Buffer)
 	context.Set(req, CtxLog, log.New(buf, "", 0))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	logLineRegex, err := regexp.Compile(`hndl GET /foof (\d{3}) [^\s]+`)
-	assert.NoError(t, err)
+	logLineRegex := mocks.CompileRegex(t, `hndl GET /foof (\d{3}) [^\s]+`)
 
 	match := logLineRegex.FindStringSubmatch(buf.String())
 	assert.NotNil(t, match)
@@ -52,16 +51,14 @@ func TestLogRequestPassesHeader(t *testing.T) {
 		},
 	))
 
-	req, err := http.NewRequest("GET", "/foof", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "/foof", nil)
 	buf := new(bytes.Buffer)
 	context.Set(req, CtxLog, log.New(buf, "", 0))
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	logLineRegex, err := regexp.Compile(`hndl GET /foof (\d{3}) [^\s]+`)
-	assert.NoError(t, err)
+	logLineRegex := mocks.CompileRegex(t, `hndl GET /foof (\d{3}) [^\s]+`)
 
 	match := logLineRegex.FindStringSubmatch(buf.String())
 	assert.NotNil(t, match)

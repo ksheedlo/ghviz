@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/ksheedlo/ghviz/mocks"
+
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -37,8 +39,7 @@ func TestCompose(t *testing.T) {
 	withMiddleware := Compose(outer, inner)
 	r.HandleFunc("/", withMiddleware(handler))
 
-	req, err := http.NewRequest("GET", "http://example.com/", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
 
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)

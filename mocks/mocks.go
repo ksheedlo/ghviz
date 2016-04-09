@@ -1,8 +1,12 @@
 package mocks
 
 import (
+	"encoding/json"
+	"io"
 	"log"
+	"net/http"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
@@ -63,4 +67,22 @@ func (m *MockRediser) ZRangeByScore(key string, opts *interfaces.ZRangeByScoreOp
 		return resultsArg.([]string), args.Error(1)
 	}
 	return nil, args.Error(1)
+}
+
+func MarshalJSON(t *testing.T, v interface{}) []byte {
+	buf, err := json.Marshal(v)
+	assert.NoError(t, err)
+	return buf
+}
+
+func CompileRegex(t *testing.T, expr string) *regexp.Regexp {
+	re, err := regexp.Compile(expr)
+	assert.NoError(t, err)
+	return re
+}
+
+func NewHttpRequest(t *testing.T, method, urlStr string, body io.Reader) *http.Request {
+	req, err := http.NewRequest(method, urlStr, body)
+	assert.NoError(t, err)
+	return req
 }

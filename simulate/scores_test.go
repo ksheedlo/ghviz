@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -231,8 +232,7 @@ func TestMarshalScoringEvent(t *testing.T) {
 		EventType: IssueReviewed,
 		Timestamp: time.Unix(1458966366, 892000000).UTC(),
 	}
-	jsonBytes, err := json.Marshal(&sev)
-	assert.NoError(t, err)
+	jsonBytes := mocks.MarshalJSON(t, &sev)
 	var sevMap map[string]interface{}
 	assert.NoError(t, json.Unmarshal(jsonBytes, &sevMap))
 	assert.Equal(t, "tester1", sevMap["actor_id"].(string))

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ksheedlo/ghviz/github"
+	"github.com/ksheedlo/ghviz/mocks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,11 +34,10 @@ func TestStarCounts(t *testing.T) {
 func TestMarshalStarCount(t *testing.T) {
 	t.Parallel()
 
-	jsonBytes, err := json.Marshal(&StarCount{
+	jsonBytes := mocks.MarshalJSON(t, &StarCount{
 		Stars:     5,
 		Timestamp: time.Unix(1458966366, 892000000).UTC(),
 	})
-	assert.NoError(t, err)
 	var starCount map[string]interface{}
 	assert.NoError(t, json.Unmarshal(jsonBytes, &starCount))
 	assert.Equal(t, 5.0, starCount["stars"].(float64))

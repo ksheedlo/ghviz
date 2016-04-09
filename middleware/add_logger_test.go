@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"testing"
+
+	"github.com/ksheedlo/ghviz/mocks"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
@@ -22,8 +23,7 @@ func TestAddLogger(t *testing.T) {
 		log.Println("Test Message")
 	}))
 
-	req, err := http.NewRequest("GET", "http://example.com/", nil)
-	assert.NoError(t, err)
+	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
 	context.Set(req, CtxResponseId, "deadbeef")
 
 	w := httptest.NewRecorder()
@@ -31,8 +31,7 @@ func TestAddLogger(t *testing.T) {
 
 	// The middle 3 columns are driven by the logger and can't be controlled
 	// by configuring AddLogger. We use a regex to parse past them.
-	logLineRegex, err := regexp.Compile(`deadbeef(?:\s+[^\s]+){3}\s+(.*)`)
-	assert.NoError(t, err)
+	logLineRegex := mocks.CompileRegex(t, `deadbeef(?:\s+[^\s]+){3}\s+(.*)`)
 
 	assert.Equal(t, "Test Message", logLineRegex.FindStringSubmatch(buf.String())[1])
 }
