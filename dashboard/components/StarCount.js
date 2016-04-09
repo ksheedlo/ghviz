@@ -43,5 +43,5 @@ export default class StarCount extends Component {
 }
 
 StarCount.propTypes = {
-  count: PropTypes.number.isRequired
+  count: PropTypes.number.isRequired,
 };

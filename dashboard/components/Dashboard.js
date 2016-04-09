@@ -43,7 +43,7 @@ export default class Dashboard extends Component {
     const topContributorsPromise = this.props.apiClient.listTopContributors({
       ...queryProps,
 
-      date: new Date()
+      date: new Date(),
     });
 
     starCountsPromise.then((starCounts) => {
@@ -55,7 +55,8 @@ export default class Dashboard extends Component {
 
 
     Promise.all([
-      issueCountsPromise, topIssuesPromise
+      issueCountsPromise,
+      topIssuesPromise,
     ])
     .then(([issueCounts, topIssues]) => {
       this.setState({ ...this.state,
@@ -67,7 +68,8 @@ export default class Dashboard extends Component {
     });
 
     Promise.all([
-      issueCountsPromise, topPrsPromise
+      issueCountsPromise,
+      topPrsPromise,
     ])
     .then(([issueCounts, topPrs]) => {
       this.setState({ ...this.state,
@@ -91,7 +93,7 @@ export default class Dashboard extends Component {
       issueCountsPromise,
       topIssuesPromise,
       topPrsPromise,
-      topContributorsPromise
+      topContributorsPromise,
     ])
     .catch(() => { /* suppress errors */ })
     .then(() => {
@@ -189,5 +191,5 @@ export default class Dashboard extends Component {
 Dashboard.propTypes = {
   apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
-  repo: PropTypes.string.isRequired
+  repo: PropTypes.string.isRequired,
 };

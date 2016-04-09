@@ -38,5 +38,5 @@ export default class TopContributors extends Component {
 }
 
 TopContributors.propTypes = {
-  contributors: PropTypes.array.isRequired
+  contributors: PropTypes.array.isRequired,
 };

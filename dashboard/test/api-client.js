@@ -24,13 +24,15 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listStarCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .then((counts) => {
         expect(window.fetch)
           .to.have.been.calledWith('/gh/tester/cool-project/star_counts');
         expect(counts).to.eql([{
-          stars: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          stars: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -45,7 +47,8 @@ describe('ApiClient', () => {
         { status: 200,
           headers: { 'Content-Type': 'application/json' } })));
       apiClient.listStarCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       }).then(() => {
         return apiClient.listStarCounts({ owner: 'tester',
                                           repo: 'cool-project' });
@@ -53,7 +56,8 @@ describe('ApiClient', () => {
       .then((counts) => {
         expect(window.fetch.callCount).to.equal(1);
         expect(counts).to.eql([{
-          stars: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          stars: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -68,7 +72,8 @@ describe('ApiClient', () => {
         { status: 500,
           headers: { 'Content-Type': 'text/plain' } })));
       apiClient.listStarCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .catch(() => {
         window.fetch.returns(Promise.resolve(new window.Response(
@@ -82,7 +87,8 @@ describe('ApiClient', () => {
       .then((counts) => {
         expect(window.fetch.callCount).to.equal(2);
         expect(counts).to.eql([{
-          stars: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          stars: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -100,13 +106,15 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listIssueCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .then((counts) => {
         expect(window.fetch)
           .to.have.been.calledWith('/gh/tester/cool-project/issue_counts');
         expect(counts).to.eql([{
-          open_issues: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          open_issues: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -122,7 +130,8 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listIssueCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       }).then(() => {
         return apiClient.listIssueCounts({ owner: 'tester',
                                            repo: 'cool-project' });
@@ -130,7 +139,8 @@ describe('ApiClient', () => {
       .then((counts) => {
         expect(window.fetch.callCount).to.equal(1);
         expect(counts).to.eql([{
-          open_issues: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          open_issues: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -145,7 +155,8 @@ describe('ApiClient', () => {
         { status: 500,
           headers: { 'Content-Type': 'text/plain' } })));
       apiClient.listIssueCounts({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .catch(() => {
         window.fetch.returns(Promise.resolve(new window.Response(
@@ -159,7 +170,8 @@ describe('ApiClient', () => {
       .then((counts) => {
         expect(window.fetch.callCount).to.equal(2);
         expect(counts).to.eql([{
-          open_issues: 1, timestamp: '2016-03-25T19:46:41.395Z'
+          open_issues: 1,
+          timestamp: '2016-03-25T19:46:41.395Z',
         }]);
         done();
       })
@@ -177,13 +189,14 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listTopIssues({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .then((topIssues) => {
         expect(window.fetch)
           .to.have.been.calledWith('/gh/tester/cool-project/top_issues');
         expect(topIssues).to.eql([{
-          title: 'Test Issue'
+          title: 'Test Issue',
         }]);
         done();
       })
@@ -201,13 +214,14 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listTopPrs({
-        owner: 'tester', repo: 'cool-project'
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .then((topPrs) => {
         expect(window.fetch)
           .to.have.been.calledWith('/gh/tester/cool-project/top_prs');
         expect(topPrs).to.eql([{
-          title: 'Test PR'
+          title: 'Test PR',
         }]);
         done();
       })
@@ -225,14 +239,16 @@ describe('ApiClient', () => {
           headers: { 'Content-Type': 'application/json' } })));
 
       apiClient.listTopContributors({
-        owner: 'tester', repo: 'cool-project', date: new Date(1458940112436)
+        date: new Date(1458940112436),
+        owner: 'tester',
+        repo: 'cool-project',
       })
       .then((topContributors) => {
         expect(window.fetch)
           .to.have.been.calledWith('/gh/tester/cool-project/highscores/2016/03');
         expect(topContributors).to.eql([
           { name: 'tester1' },
-          { name: 'tester2' }
+          { name: 'tester2' },
         ]);
         done();
       })

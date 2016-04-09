@@ -32,5 +32,5 @@ export default class TopIssues extends Component {
 
 TopIssues.propTypes = {
   issues: PropTypes.array.isRequired,
-  openIssues: PropTypes.number.isRequired
+  openIssues: PropTypes.number.isRequired,
 };

@@ -9,7 +9,7 @@ exports.entry = './index.js';
 
 exports.output = {
   filename: 'bundle.min.js',
-  path: __dirname
+  path: __dirname,
 };
 
 exports.module = {
@@ -17,8 +17,8 @@ exports.module = {
     exclude: /node_modules/,
     loader: 'babel',
     query: { presets: ['es2015', 'react', 'stage-2'] },
-    test: /\.js$/
-  }]
+    test: /\.js$/,
+  }],
 };
 
 exports.plugins = flatten([
@@ -26,7 +26,7 @@ exports.plugins = flatten([
 
   (process.env.NODE_ENV === 'production' ?
      [new webpack.optimize.UglifyJsPlugin({ compress: { warnings: false } })] :
-     [])
+     []),
 ]);
 
 exports.devtool = (process.env.NODE_ENV === 'production' ?

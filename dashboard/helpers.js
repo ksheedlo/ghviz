@@ -6,7 +6,7 @@ const LINE_CHART_MARGIN = {
   top: 20,
   right: 20,
   bottom: 30,
-  left: 50
+  left: 50,
 };
 
 export function drawIssues({ chartLineColor,

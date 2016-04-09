@@ -32,5 +32,5 @@ export default class TopPrs extends Component {
 
 TopPrs.propTypes = {
   openPrs: PropTypes.number.isRequired,
-  prs: PropTypes.array.isRequired
+  prs: PropTypes.array.isRequired,
 };

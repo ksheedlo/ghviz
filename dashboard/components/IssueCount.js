@@ -14,7 +14,7 @@ export default class IssueCount extends Component {
   componentDidMount() {
     this.props.apiClient.listIssueCounts({
       owner: this.props.owner,
-      repo: this.props.repo
+      repo: this.props.repo,
     })
     .then((issueCounts) => {
       const formattedCounts = map(issueCounts, (issueCount) => {
@@ -30,7 +30,7 @@ export default class IssueCount extends Component {
         key: 'openIssues',
         loaderElement: this.refs.loader,
         title: 'Open Issues Over Time',
-        yLabel: 'Open Issues'
+        yLabel: 'Open Issues',
       });
     });
   }
@@ -53,5 +53,5 @@ export default class IssueCount extends Component {
 IssueCount.propTypes = {
   apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
-  repo: PropTypes.string.isRequired
+  repo: PropTypes.string.isRequired,
 };

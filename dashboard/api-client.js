@@ -24,7 +24,7 @@ export default class ApiClient {
     return cachedApiJson({
       cache: this._cache,
       cacheKey: `gh:${owner}:${repo}:star_counts`,
-      endpoint: `/gh/${owner}/${repo}/star_counts`
+      endpoint: `/gh/${owner}/${repo}/star_counts`,
     });
   }
 
@@ -32,7 +32,7 @@ export default class ApiClient {
     return cachedApiJson({
       cache: this._cache,
       cacheKey: `gh:${owner}:${repo}:issue_counts`,
-      endpoint: `/gh/${owner}/${repo}/issue_counts`
+      endpoint: `/gh/${owner}/${repo}/issue_counts`,
     });
   }
 
@@ -40,7 +40,7 @@ export default class ApiClient {
     return cachedApiJson({
       cache: this._cache,
       cacheKey: `gh:${owner}:${repo}:top_issues`,
-      endpoint: `/gh/${owner}/${repo}/top_issues`
+      endpoint: `/gh/${owner}/${repo}/top_issues`,
     });
   }
 
@@ -48,7 +48,7 @@ export default class ApiClient {
     return cachedApiJson({
       cache: this._cache,
       cacheKey: `gh:${owner}:${repo}:top_prs`,
-      endpoint: `/gh/${owner}/${repo}/top_prs`
+      endpoint: `/gh/${owner}/${repo}/top_prs`,
     });
   }
 
@@ -59,7 +59,7 @@ export default class ApiClient {
     return cachedApiJson({
       cache: this._cache,
       cacheKey: `gh:${owner}:${repo}:highscores:${year}:${month}`,
-      endpoint: `/gh/${owner}/${repo}/highscores/${year}/${month}`
+      endpoint: `/gh/${owner}/${repo}/highscores/${year}/${month}`,
     });
   }
 }

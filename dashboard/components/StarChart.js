@@ -8,7 +8,7 @@ const LINE_CHART_MARGIN = {
   top: 20,
   right: 20,
   bottom: 30,
-  left: 50
+  left: 50,
 };
 
 export default class StarChart extends Component {
@@ -19,7 +19,7 @@ export default class StarChart extends Component {
   componentDidMount() {
     this.props.apiClient.listStarCounts({
       owner: this.props.owner,
-      repo: this.props.repo
+      repo: this.props.repo,
     })
     .then((starCounts) => {
       const formattedCounts = map(starCounts, (starCount) => {
@@ -122,5 +122,5 @@ export default class StarChart extends Component {
 StarChart.propTypes = {
   apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
-  repo: PropTypes.string.isRequired
+  repo: PropTypes.string.isRequired,
 };

@@ -14,7 +14,7 @@ export default class PrCount extends Component {
   componentDidMount() {
     this.props.apiClient.listIssueCounts({
       owner: this.props.owner,
-      repo: this.props.repo
+      repo: this.props.repo,
     })
     .then((issueCounts) => {
       const formattedCounts = map(issueCounts, (issueCount) => {
@@ -30,7 +30,7 @@ export default class PrCount extends Component {
         key: 'openPrs',
         loaderElement: this.refs.loader,
         title: 'Open PRs Over Time',
-        yLabel: 'Open PRs'
+        yLabel: 'Open PRs',
       });
     });
   }
@@ -53,5 +53,5 @@ export default class PrCount extends Component {
 PrCount.propTypes = {
   apiClient: PropTypes.object.isRequired,
   owner: PropTypes.string.isRequired,
-  repo: PropTypes.string.isRequired
+  repo: PropTypes.string.isRequired,
 };
