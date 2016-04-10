@@ -1,0 +1,37 @@
+version: '2'
+services:
+  dashboard:
+    image: node:4.4.2
+    command: node /srv/dashboard/dist/server.js
+    environment:
+      GHVIZ_API_URL: 'http://ghapi:4000'
+      GHVIZ_OWNER:
+      GHVIZ_REPO:
+    links:
+      - ghapi
+    ports:
+      - "4001:4001"
+    volumes:
+      - ./dashboard:/srv/dashboard
+    working_dir: /srv/dashboard
+
+  ghapi:
+    image: golang:1.6.0
+    command: ./run-go.sh ./services/web/web
+    environment:
+      GHVIZ_REDIS_HOST: 'redis'
+      GITHUB_TOKEN:
+      GHVIZ_OWNER:
+      GHVIZ_REPO:
+    links:
+      - redis
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/go/src/github.com/ksheedlo/ghviz
+    working_dir: /go/src/github.com/ksheedlo/ghviz
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"

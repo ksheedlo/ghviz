@@ -10,16 +10,14 @@ import process from 'process';
 const app = express();
 const router = Router();
 const indexTpl = hogan.compile(fs.readFileSync('./index.tpl.html', 'utf-8'));
-const proxy = httpProxy.createProxyServer({
-  target: `${process.env.GHVIZ_API_URL}/`,
-});
+const proxy = httpProxy.createProxyServer({});
 
 proxy.on('proxyReq', (proxyReq, req) => {
   proxyReq.path = parse(req.url).path.replace(/^\/gh/, '');
 });
 
 router.all('/gh/*', (req, res) => {
-  proxy.web(req, res, {});
+  proxy.web(req, res, { target: `${process.env.GHVIZ_API_URL}/` });
 });
 
 router.get('/', (req, res) => {

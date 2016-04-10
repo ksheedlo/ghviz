@@ -20,10 +20,13 @@ services/prewarm/prewarm: errors/*.go github/*.go interfaces/*.go prewarm/*.go s
 go: services/prewarm/prewarm services/web/web
 
 clean:
-	rm dashboard/bundle.min.js dashboard/*.js.map dashboard/dist/server.js services/prewarm/prewarm services/web/web
+	rm -f dashboard/bundle.min.js dashboard/*.js.map dashboard/dist/server.js services/prewarm/prewarm services/web/web
 
 jsclean:
-	rm dashboard/bundle.min.js dashboard/*.js.map
+	rm -f dashboard/bundle.min.js dashboard/*.js.map
+
+goclean:
+	rm -f services/web/web services/prewarm/prewarm
 
 test:
 	go vet github.com/ksheedlo/ghviz/errors \
