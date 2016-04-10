@@ -3,3 +3,6 @@ dashboard/bundle.min.js
 dashboard/*.js.map
 services/prewarm/prewarm
 services/web/web
+
+npm-debug.log
+

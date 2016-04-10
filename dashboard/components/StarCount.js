@@ -1,6 +1,6 @@
 'use strict';
 
-import React, { Component, PropTypes } from 'react';
+import React, { PropTypes } from 'react';
 
 function starCaption(stars) {
   if (stars < 10) {
@@ -24,22 +24,16 @@ function starCaption(stars) {
   return 'World Domination';
 }
 
-export default class StarCount extends Component {
-  constructor(props) {
-    super(props);
-  }
-
-  render() {
-    return (
-      <div>
-        <p className="star-count__text text-center">
-          <span className="star-count__count">{this.props.count} </span>
-          <span className="star-count__star octicon octicon-star"></span>
-        </p>
-        <p className="star-count__caption text-center">{starCaption(this.props.count)}</p>
-      </div>
-    );
-  }
+export default function StarCount({ count }) {
+  return (
+    <div>
+      <p className="star-count__text text-center">
+        <span className="star-count__count">{count} </span>
+        <span className="star-count__star octicon octicon-star"></span>
+      </p>
+      <p className="star-count__caption text-center">{starCaption(count)}</p>
+    </div>
+  );
 }
 
 StarCount.propTypes = {
