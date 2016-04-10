@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"text/template"
 	"time"
 
 	"github.com/gorilla/context"
@@ -90,18 +89,6 @@ func TopPrs(gh github.ListTopPrser) http.HandlerFunc {
 		jsonBlob, _ := json.Marshal(allItems)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(jsonBlob)
-	}
-}
-
-type IndexParams struct {
-	Owner string
-	Repo  string
-}
-
-func ServeIndex(params *IndexParams, tpl *template.Template) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		tpl.Execute(w, params)
 	}
 }
 

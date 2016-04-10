@@ -11,8 +11,9 @@
     <nav class="navbar navbar-inverse navbar-fixed-top">
       <div class="container-fluid">
         <div class="navbar-header">
-          <a class="navbar-brand" href="https://github.com/{{.Owner}}/{{.Repo}}" target="_blank">
-            {{.Owner}}/{{.Repo}}
+          <a class="navbar-brand" target="_blank"
+            href="https://github.com/{{owner}}/{{repo}}">
+            {{owner}}/{{repo}}
           </a>
         </div>
       </div>
@@ -67,8 +68,8 @@
     </div>
     <script type="text/javascript">
       window.GLOBALS = {
-        owner: "{{.Owner}}",
-        repo: "{{.Repo}}"
+        owner: "{{owner}}",
+        repo: "{{repo}}"
       };
     </script>
     <script type="text/javascript" src="/dashboard/bundle.min.js"></script>

@@ -6,7 +6,10 @@ all: js go
 dashboard/bundle.min.js: dashboard/index.js dashboard/api-client.js dashboard/cache.js dashboard/helpers.js dashboard/components/*.js
 	cd dashboard; NODE_ENV=$(NODE_ENV) ./node_modules/.bin/webpack
 
-js: dashboard/bundle.min.js
+dashboard/dist/server.js: dashboard/server.js
+	cd dashboard; ./node_modules/.bin/webpack --config webpack-server.config.js
+
+js: dashboard/bundle.min.js dashboard/dist/server.js
 
 services/web/web: errors/*.go github/*.go interfaces/*.go middleware/*.go models/*.go routes/*.go services/web/*.go simulate/*.go
 	cd services/web; go build
@@ -17,7 +20,7 @@ services/prewarm/prewarm: errors/*.go github/*.go interfaces/*.go prewarm/*.go s
 go: services/prewarm/prewarm services/web/web
 
 clean:
-	rm dashboard/bundle.min.js dashboard/*.js.map services/prewarm/prewarm services/web/web
+	rm dashboard/bundle.min.js dashboard/*.js.map dashboard/dist/server.js services/prewarm/prewarm services/web/web
 
 jsclean:
 	rm dashboard/bundle.min.js dashboard/*.js.map

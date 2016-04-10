@@ -6,3 +6,4 @@ services/web/web
 
 npm-debug.log
 
+dashboard/dist/

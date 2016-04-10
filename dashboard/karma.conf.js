@@ -13,16 +13,16 @@ module.exports = function(config) {
     files: [
       'third_party/sinon/1.17.3/sinon-1.17.3.js',
 
-      'test/**/*.js'
+      'test/**/*.js',
     ],
     logLevel: config.LOG_INFO,
     port: 9876,
     preprocessors: {
-      'test/**/*.js': ['webpack']
+      'test/**/*.js': ['webpack'],
     },
     reporters: ['progress'],
     singleRun: false,
     webpack: webpackConfig,
-    webpackMiddleware: { noInfo: true }
+    webpackMiddleware: { noInfo: true },
   });
 };

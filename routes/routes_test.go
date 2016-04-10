@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
-	"text/template"
 	"time"
 
 	"github.com/ksheedlo/ghviz/errors"
@@ -345,27 +344,6 @@ func TestTopPrsError(t *testing.T) {
 	ghMock.AssertExpectations(t)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Equal(t, "Github API Error\n", w.Body.String())
-}
-
-func TestServeIndex(t *testing.T) {
-	t.Parallel()
-
-	r := mux.NewRouter()
-	logger := mocks.DummyLogger(t)
-	tpl, err := template.New("index").Parse("<Test>{{.Owner}}|{{.Repo}}</Test>")
-	assert.NoError(t, err)
-	r.HandleFunc("/", ServeIndex(&IndexParams{
-		Owner: "tester1",
-		Repo:  "coolrepo",
-	}, tpl))
-	req := mocks.NewHttpRequest(t, "GET", "http://example.com/", nil)
-	context.Set(req, middleware.CtxLog, logger)
-
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "<Test>tester1|coolrepo</Test>", w.Body.String())
 }
 
 func TestHighScoresBadYear(t *testing.T) {
